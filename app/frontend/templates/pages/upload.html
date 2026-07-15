@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link
+    rel="stylesheet"
+    href="{{ url_for('static', path='/css/pages/upload.css') }}?v=20260714-2"
+>
+{% endblock %}
+
+{% block content %}
+<main class="upload-page">
+
+    <section class="card upload-card">
+
+        <header class="upload-card__header">
+            <p class="upload-card__eyebrow">
+                Análise documental
+            </p>
+
+            <h1 class="upload-card__title">
+                Envio de documentos
+            </h1>
+
+            <p class="upload-card__subtitle">
+                Selecione um ou vários arquivos PDF. O DocDNA escolherá
+                automaticamente entre análise individual e processamento
+                em lote.
+            </p>
+        </header>
+
+        <form
+            id="upload-form"
+            class="upload-form"
+            novalidate
+        >
+            <input
+                id="pdf-files"
+                name="files"
+                type="file"
+                accept="application/pdf,.pdf"
+                multiple
+                hidden
+            >
+
+            <div
+                id="upload-dropzone"
+                class="upload-dropzone"
+                role="button"
+                tabindex="0"
+                aria-label="Selecionar ou arrastar documentos PDF"
+            >
+                <div
+                    class="upload-dropzone__icon"
+                    aria-hidden="true"
+                >
+                    PDF
+                </div>
+
+                <div class="upload-dropzone__content">
+                    <strong class="upload-dropzone__title">
+                        Arraste os PDFs para esta área
+                    </strong>
+
+                    <span class="upload-dropzone__separator">
+                        ou
+                    </span>
+
+                    <button
+                        id="select-files-button"
+                        class="btn btn-secondary"
+                        type="button"
+                    >
+                        Selecionar documentos
+                    </button>
+
+                    <p class="upload-dropzone__help">
+                        Somente arquivos no formato PDF.
+                    </p>
+                </div>
+            </div>
+
+            <section
+                id="selected-files-section"
+                class="selected-files"
+                hidden
+            >
+                <div class="selected-files__header">
+                    <div>
+                        <p class="selected-files__eyebrow">
+                            Arquivos selecionados
+                        </p>
+
+                        <h2 class="selected-files__title">
+                            Documentos do envio
+                        </h2>
+                    </div>
+
+                    <button
+                        id="clear-files-button"
+                        class="selected-files__clear"
+                        type="button"
+                    >
+                        Remover todos
+                    </button>
+                </div>
+
+                <div
+                    id="selected-files-list"
+                    class="selected-files__list"
+                    aria-live="polite"
+                ></div>
+
+                <div class="selected-files__summary">
+                    <div>
+                        <span>Quantidade</span>
+
+                        <strong id="selected-files-count">
+                            0 documentos
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Tamanho total</span>
+
+                        <strong id="selected-files-size">
+                            0 bytes
+                        </strong>
+                    </div>
+                </div>
+            </section>
+
+            <div
+                id="upload-form-actions"
+                class="upload-form__actions"
+                hidden
+            >
+                <button
+                    id="upload-submit-button"
+                    class="btn btn-primary"
+                    type="submit"
+                >
+                    Analisar documentos
+                </button>
+            </div>
+        </form>
+
+        <section
+            id="upload-feedback"
+            class="upload-feedback"
+            aria-live="polite"
+            hidden
+        >
+            <div class="upload-feedback__header">
+                <strong id="upload-feedback-title">
+                    Preparando envio
+                </strong>
+
+                <span id="upload-feedback-status">
+                    0%
+                </span>
+            </div>
+
+            <div
+                id="upload-progress"
+                class="upload-progress"
+                role="progressbar"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0"
+            >
+                <div
+                    id="upload-progress-bar"
+                    class="upload-progress__bar"
+                ></div>
+            </div>
+
+            <p
+                id="upload-feedback-message"
+                class="upload-feedback__message"
+            >
+                Aguarde enquanto os documentos são processados.
+            </p>
+        </section>
+
+        <div
+            id="upload-result"
+            class="upload-result"
+            aria-live="polite"
+        ></div>
+
+    </section>
+
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script
+    src="{{ url_for('static', path='/js/pages/upload.js') }}?v=20260714-2"
+></script>
+{% endblock %}

@@ -1,0 +1,69 @@
+# Virtual Environment
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# PyCharm
+.idea/
+
+# Environment
+.env
+
+# Logs
+*.log
+
+# SQLite
+*.db
+
+# Uploads
+storage/uploads/
+
+# Temporary files
+storage/temp/
+
+# Reports
+storage/reports/
+
+# Fingerprints
+storage/fingerprints/
+
+# Extracted data
+storage/extracted/
+
+# Virtual Environment
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# PyCharm
+.idea/
+
+# Environment
+.env
+
+# Logs
+*.log
+
+# SQLite
+*.db
+
+# Uploads
+storage/uploads/
+
+# Temporary files
+storage/temp/
+
+# Reports
+storage/reports/
+
+# Fingerprints
+storage/fingerprints/
+
+# Extracted data
+storage/extracted/

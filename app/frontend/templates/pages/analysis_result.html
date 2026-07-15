@@ -1,0 +1,839 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link
+    rel="stylesheet"
+    href="{{ url_for('static', path='/css/pages/analysis_result.css') }}"
+>
+{% endblock %}
+
+{% block content %}
+<main class="analysis-page">
+
+    <section class="analysis-header card">
+        <div>
+            <p class="section-eyebrow">
+                Resultado da análise
+            </p>
+
+            <h1 class="analysis-header__title">
+                {{ analysis.filename }}
+            </h1>
+
+            <p class="analysis-header__subtitle">
+                Documento processado pelo pipeline do DocDNA.
+            </p>
+        </div>
+
+        <a class="btn btn-secondary" href="/upload">
+            Analisar outro PDF
+        </a>
+    </section>
+
+    <!-- Primeira linha: resumo da análise -->
+    <section class="summary-grid">
+
+        <article class="card summary-card">
+            <h2 class="summary-card__title">
+                Informações do arquivo
+            </h2>
+
+            <dl class="data-list">
+                <div class="data-list__row">
+                    <dt>Nome original</dt>
+                    <dd>{{ analysis.filename }}</dd>
+                </div>
+
+                <div class="data-list__row">
+                    <dt>Tamanho do arquivo</dt>
+                    <dd>{{ analysis.formatted_size }}</dd>
+                </div>
+
+                <div class="data-list__row">
+                    <dt>Data de envio</dt>
+                    <dd>{{ analysis.uploaded_at }}</dd>
+                </div>
+            </dl>
+        </article>
+
+        <article class="card summary-card">
+            <h2 class="summary-card__title">
+                Dados do PDF
+            </h2>
+
+            <dl class="data-list">
+                <div class="data-list__row">
+                    <dt>Páginas</dt>
+                    <dd>{{ analysis.page_count }}</dd>
+                </div>
+
+                <div class="data-list__row">
+                    <dt>Título</dt>
+                    <dd>{{ analysis.pdf_title }}</dd>
+                </div>
+
+                <div class="data-list__row">
+                    <dt>Autor</dt>
+                    <dd>{{ analysis.pdf_author }}</dd>
+                </div>
+            </dl>
+        </article>
+
+        <article class="card summary-card">
+            <h2 class="summary-card__title">
+                OCR
+            </h2>
+
+            <p class="summary-card__message">
+                {{ analysis.ocr_message }}
+            </p>
+        </article>
+
+        <article class="card summary-card">
+            <h2 class="summary-card__title">
+                Imagens internas
+            </h2>
+
+            <p class="summary-card__message">
+                {{ analysis.image_message }}
+            </p>
+        </article>
+
+    </section>
+
+    <!-- Segunda linha: evidências, códigos e sequências -->
+    <section class="analysis-main-grid">
+
+        <article class="card evidence-section">
+            <p class="section-eyebrow">
+                Evidências técnicas
+            </p>
+
+            <h2 class="section-title">
+                {{ analysis.evidence_count }}
+                evidência(s) registrada(s)
+            </h2>
+
+            {% if analysis.evidences %}
+                <div class="evidence-list">
+                    {% for evidence in analysis.evidences %}
+                        <article
+                            class="
+                                evidence-item
+                                evidence-item--{{ evidence.severity }}
+                            "
+                        >
+                            <div class="evidence-item__top">
+                                <strong>
+                                    {{ evidence.title }}
+                                </strong>
+
+                                <span class="evidence-item__severity">
+                                    {{ evidence.severity }}
+                                </span>
+                            </div>
+
+                            <p>
+                                {{ evidence.description }}
+                            </p>
+
+                            <small>
+                                Detector: {{ evidence.detector }}
+                                · Confiança:
+                                {{ "%.0f"|format(evidence.confidence * 100) }}%
+                            </small>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="summary-card__message">
+                    Nenhuma evidência técnica foi registrada.
+                </p>
+            {% endif %}
+        </article>
+
+        <article class="card code-card">
+            <h2 class="summary-card__title">
+                Códigos lidos no documento
+            </h2>
+
+            <p class="summary-card__message">
+                {{ analysis.barcode_message }}
+            </p>
+
+            {% if analysis.barcodes %}
+                <div class="barcode-list">
+                    {% for barcode in analysis.barcodes %}
+                        <div class="barcode-item">
+                            <span class="barcode-item__label">
+                                Página {{ barcode.page_number }}
+                            </span>
+
+                            <strong class="barcode-item__content">
+                                {{ barcode.content }}
+                            </strong>
+
+                            <small class="barcode-item__format">
+                                Formato: {{ barcode.format }}
+                            </small>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </article>
+
+        <article class="card code-card">
+            <h2 class="summary-card__title">
+                Sequências numéricas detectadas
+            </h2>
+
+            <p class="summary-card__message">
+                {{ analysis.printed_numeric_line_message }}
+            </p>
+
+            {% if analysis.printed_numeric_lines %}
+                <div class="barcode-list">
+                    {% for line in analysis.printed_numeric_lines %}
+                        <div class="barcode-item">
+                            <span class="barcode-item__label">
+                                Leitura obtida por:
+
+                                {% if line.source == "ocr" %}
+                                    OCR
+                                {% else %}
+                                    texto nativo
+                                {% endif %}
+                            </span>
+
+                            <strong class="barcode-item__content">
+                                {{ line.normalized_content }}
+                            </strong>
+
+                            <small class="barcode-item__format">
+                                {{ line.digit_count }} dígitos
+                                · consulte a validação estrutural abaixo
+                            </small>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </article>
+
+    </section>
+
+    <!-- Validação estrutural -->
+    <section class="card validation-section">
+
+        <p class="section-eyebrow">
+            Validação estrutural
+        </p>
+
+        <h2 class="section-title">
+            Análise das sequências numéricas
+        </h2>
+
+        <p class="summary-card__message">
+            Esta etapa verifica o tamanho, o padrão provável e os dígitos
+            verificadores das sequências capturadas no documento.
+        </p>
+
+        {% if analysis.numeric_line_validations %}
+            <div class="validation-list">
+                {% for validation in analysis.numeric_line_validations %}
+                    <article
+                        class="
+                            validation-item
+                            validation-item--{{ validation.status }}
+                        "
+                    >
+                        <div class="validation-item__header">
+                            <strong>
+                                Sequência {{ validation.line_index }}
+                            </strong>
+
+                            <span class="validation-status">
+                                {{ validation.status_label }}
+                            </span>
+                        </div>
+
+                        <p class="validation-item__number">
+                            {{ validation.normalized_content }}
+                        </p>
+
+                        <dl class="validation-data">
+                            <div>
+                                <dt>Tipo provável</dt>
+
+                                <dd>
+                                    {{ validation.line_type_label }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Método de validação</dt>
+
+                                <dd>
+                                    {{ validation.validation_method_label }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Dígitos verificadores válidos</dt>
+
+                                <dd>
+                                    {{ validation.valid_check_digits }}
+                                    de
+                                    {{ validation.total_check_digits }}
+                                </dd>
+                            </div>
+                        </dl>
+
+                        <p class="validation-item__message">
+                            {{ validation.message }}
+                        </p>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="summary-card__message">
+                Não existem sequências numéricas disponíveis para validação.
+            </p>
+        {% endif %}
+
+    </section>
+
+    <!-- Localização visual da evidência -->
+    <section class="card visual-evidence-section">
+
+        <p class="section-eyebrow">
+            Evidência visual
+        </p>
+
+        <h2 class="section-title">
+            Localização visual da sequência no documento
+        </h2>
+
+        <p class="visual-evidence-section__intro">
+            Esta etapa indica onde a sequência numérica utilizada na análise
+            foi localizada visualmente no documento. A imagem completa pode
+            ser aberta em uma nova página.
+        </p>
+
+        {% if analysis.numeric_line_locations %}
+            <div class="visual-evidence-list">
+
+                {% for location in analysis.numeric_line_locations %}
+                    <article
+                        class="
+                            visual-evidence-item
+                            {% if location.located %}
+                                visual-evidence-item--located
+                            {% else %}
+                                visual-evidence-item--unlocated
+                            {% endif %}
+                        "
+                    >
+                        <div class="visual-evidence-item__header">
+                            <div>
+                                <strong>
+                                    Sequência {{ location.line_index }}
+                                </strong>
+
+                                {% if location.located %}
+                                    <span class="visual-evidence-status">
+                                        Localizada
+                                    </span>
+                                {% else %}
+                                    <span
+                                        class="
+                                            visual-evidence-status
+                                            visual-evidence-status--warning
+                                        "
+                                    >
+                                        Não localizada
+                                    </span>
+                                {% endif %}
+                            </div>
+
+                            {% if location.located %}
+                                <span class="visual-evidence-page">
+                                    Página {{ location.page_number }}
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <p class="visual-evidence-message">
+                            {{ location.message }}
+                        </p>
+
+                        {% if location.located %}
+                            <dl class="visual-evidence-data">
+                                <div>
+                                    <dt>Confiança média do OCR</dt>
+
+                                    <dd>
+                                        {{ location.confidence_label }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt>Conteúdo localizado</dt>
+
+                                    <dd class="technical-value--break">
+                                        {{ location.matched_content }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt>Coordenadas na imagem</dt>
+
+                                    <dd>
+                                        X: {{ location.left }},
+                                        Y: {{ location.top }},
+                                        Largura: {{ location.width }},
+                                        Altura: {{ location.height }}
+                                    </dd>
+                                </div>
+                            </dl>
+
+                            <div class="visual-evidence-actions">
+                                {% if location.annotated_image_url %}
+                                    <a
+                                        href="{{ location.annotated_image_url }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="btn btn-secondary"
+                                    >
+                                        Abrir imagem anotada
+                                    </a>
+                                {% endif %}
+
+                                {% if location.source_image_url %}
+                                    <a
+                                        href="{{ location.source_image_url }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="btn btn-secondary"
+                                    >
+                                        Abrir página sem marcação
+                                    </a>
+                                {% endif %}
+                            </div>
+
+                        {% else %}
+                            <div class="visual-evidence-warning">
+                                A sequência não foi vinculada a uma região da
+                                página com confiança suficiente. Nenhuma
+                                marcação visual foi produzida.
+                            </div>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+
+            </div>
+        {% else %}
+            <p class="summary-card__message">
+                Nenhuma sequência foi disponibilizada para localização visual.
+            </p>
+        {% endif %}
+
+    </section>
+
+    <!-- Detalhes técnicos -->
+    <section class="card technical-details">
+
+        <details open>
+            <summary>
+                Detalhes técnicos
+            </summary>
+
+            <div class="technical-details__content">
+
+                <section class="technical-grid">
+
+                    <article class="technical-block">
+                        <h3>
+                            Hashes e integridade
+                        </h3>
+
+                        <dl class="technical-table">
+                            <div>
+                                <dt>SHA-256</dt>
+
+                                <dd class="technical-value--break">
+                                    {{ analysis.sha256 }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </article>
+
+                    <article class="technical-block">
+                        <h3>
+                            Informações avançadas do PDF
+                        </h3>
+
+                        <dl class="technical-table">
+                            <div>
+                                <dt>Produtor</dt>
+                                <dd>{{ analysis.pdf_producer }}</dd>
+                            </div>
+
+                            <div>
+                                <dt>Criador</dt>
+                                <dd>{{ analysis.pdf_creator }}</dd>
+                            </div>
+
+                            <div>
+                                <dt>Data de criação</dt>
+
+                                <dd>
+                                    {{ analysis.pdf_creation_date }}
+
+                                    <small class="technical-raw-value">
+                                        Valor original:
+                                        {{ analysis.pdf_creation_date_raw }}
+                                    </small>
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Data de modificação</dt>
+
+                                <dd>
+                                    {{ analysis.pdf_modification_date }}
+
+                                    <small class="technical-raw-value">
+                                        Valor original:
+                                        {{ analysis.pdf_modification_date_raw }}
+                                    </small>
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Versão do PDF</dt>
+                                <dd>{{ analysis.pdf_version }}</dd>
+                            </div>
+
+                            <div>
+                                <dt>Possui texto nativo</dt>
+
+                                <dd>
+                                    {{
+                                        "Sim"
+                                        if analysis.has_native_text
+                                        else "Não"
+                                    }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Possui imagens</dt>
+
+                                <dd>
+                                    {{
+                                        "Sim"
+                                        if analysis.has_images
+                                        else "Não"
+                                    }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </article>
+
+                    <article class="technical-block">
+                        <h3>
+                            Texto nativo extraído
+                        </h3>
+
+                        <dl class="technical-table">
+                            <div>
+                                <dt>Total de caracteres</dt>
+
+                                <dd>
+                                    {{ analysis.native_text_character_count }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Páginas com texto</dt>
+
+                                <dd>
+                                    {{ analysis.native_text_pages }}
+                                </dd>
+                            </div>
+                        </dl>
+
+                        <h4>
+                            Conteúdo extraído
+                        </h4>
+
+                        <pre>{{ analysis.native_text_content or "Nenhum texto nativo extraído." }}</pre>
+                    </article>
+
+                    <article class="technical-block">
+                        <h3>
+                            OCR
+                        </h3>
+
+                        <dl class="technical-table">
+                            <div>
+                                <dt>Idioma utilizado</dt>
+                                <dd>{{ analysis.ocr_language }}</dd>
+                            </div>
+
+                            <div>
+                                <dt>Páginas processadas</dt>
+
+                                <dd>
+                                    {{ analysis.ocr_pages_processed }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Páginas com texto</dt>
+
+                                <dd>
+                                    {{ analysis.ocr_pages_with_text }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Total de caracteres</dt>
+
+                                <dd>
+                                    {{ analysis.ocr_character_count }}
+                                </dd>
+                            </div>
+                        </dl>
+
+                        <h4>
+                            Conteúdo reconhecido
+                        </h4>
+
+                        <pre>{{ analysis.ocr_content or "Nenhum texto identificado por OCR." }}</pre>
+                    </article>
+
+                    <article class="technical-block">
+                        <h3>
+                            Imagens internas
+                        </h3>
+
+                        <dl class="technical-table">
+                            <div>
+                                <dt>Total encontrado</dt>
+                                <dd>{{ analysis.image_count }}</dd>
+                            </div>
+                        </dl>
+
+                        {% if analysis.images %}
+                            <div class="technical-items">
+                                {% for image in analysis.images %}
+                                    <div class="technical-item">
+                                        <strong>
+                                            {{ image.filename }}
+                                        </strong>
+
+                                        <span>
+                                            {{ image.width }}
+                                            ×
+                                            {{ image.height }}
+                                            ·
+                                            {{ image.extension }}
+                                            ·
+                                            {{ image.size_bytes }}
+                                            bytes
+                                        </span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </article>
+
+                    <article class="technical-block">
+                        <h3>
+                            Códigos lidos
+                        </h3>
+
+                        <dl class="technical-table">
+                            <div>
+                                <dt>Total encontrado</dt>
+                                <dd>{{ analysis.barcode_count }}</dd>
+                            </div>
+
+                            <div>
+                                <dt>Formatos</dt>
+                                <dd>{{ analysis.barcode_formats }}</dd>
+                            </div>
+
+                            <div>
+                                <dt>Páginas</dt>
+                                <dd>{{ analysis.barcode_pages }}</dd>
+                            </div>
+                        </dl>
+                    </article>
+
+                    <article
+                        class="
+                            technical-block
+                            technical-block--full
+                        "
+                    >
+                        <h3>
+                            Sequências numéricas e validação estrutural
+                        </h3>
+
+                        <dl class="technical-table">
+                            <div>
+                                <dt>Total de sequências</dt>
+
+                                <dd>
+                                    {{ analysis.printed_numeric_line_count }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Fontes</dt>
+
+                                <dd>
+                                    {{ analysis.printed_numeric_line_sources }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Total de dígitos capturados</dt>
+
+                                <dd>
+                                    {{ analysis.printed_numeric_digit_total }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Sequências válidas</dt>
+
+                                <dd>
+                                    {{ analysis.valid_numeric_line_count }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Sequências inválidas</dt>
+
+                                <dd>
+                                    {{ analysis.invalid_numeric_line_count }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Sequências inconclusivas</dt>
+
+                                <dd>
+                                    {{
+                                        analysis.inconclusive_numeric_line_count
+                                    }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Localizações visuais confirmadas</dt>
+
+                                <dd>
+                                    {{ analysis.located_numeric_line_count }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Localizações não confirmadas</dt>
+
+                                <dd>
+                                    {{ analysis.unlocated_numeric_line_count }}
+                                </dd>
+                            </div>
+                        </dl>
+
+                        {% if analysis.numeric_line_validations %}
+                            <div class="validation-list">
+                                {% for validation in analysis.numeric_line_validations %}
+                                    <article
+                                        class="
+                                            validation-item
+                                            validation-item--{{ validation.status }}
+                                        "
+                                    >
+                                        <div class="validation-item__header">
+                                            <strong>
+                                                Sequência
+                                                {{ validation.line_index }}
+                                            </strong>
+
+                                            <span class="validation-status">
+                                                {{ validation.status_label }}
+                                            </span>
+                                        </div>
+
+                                        <p class="validation-item__number">
+                                            {{ validation.normalized_content }}
+                                        </p>
+
+                                        <dl class="validation-data">
+                                            <div>
+                                                <dt>Tipo provável</dt>
+
+                                                <dd>
+                                                    {{
+                                                        validation.line_type_label
+                                                    }}
+                                                </dd>
+                                            </div>
+
+                                            <div>
+                                                <dt>
+                                                    Método de validação
+                                                </dt>
+
+                                                <dd>
+                                                    {{
+                                                        validation.validation_method_label
+                                                    }}
+                                                </dd>
+                                            </div>
+
+                                            <div>
+                                                <dt>
+                                                    Dígitos verificadores válidos
+                                                </dt>
+
+                                                <dd>
+                                                    {{
+                                                        validation.valid_check_digits
+                                                    }}
+                                                    de
+                                                    {{
+                                                        validation.total_check_digits
+                                                    }}
+                                                </dd>
+                                            </div>
+                                        </dl>
+
+                                        <p class="validation-item__message">
+                                            {{ validation.message }}
+                                        </p>
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="summary-card__message">
+                                Não existem sequências numéricas disponíveis
+                                para validação.
+                            </p>
+                        {% endif %}
+                    </article>
+
+                </section>
+
+            </div>
+        </details>
+
+    </section>
+
+</main>
+{% endblock %}

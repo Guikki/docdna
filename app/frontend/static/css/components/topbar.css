@@ -1,0 +1,35 @@
+.topbar {
+    height: 64px;
+    background: var(--color-surface);
+    border-bottom: 2px solid var(--color-purple);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+}
+
+.topbar__brand {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--color-navy);
+}
+
+.topbar__accent {
+    color: var(--color-pink);
+}
+
+.topbar__nav {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.topbar__link {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-muted);
+}
+
+.topbar__link:hover {
+    color: var(--color-purple);
+}

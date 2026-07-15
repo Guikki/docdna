@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/pages/home.css') }}">
+{% endblock %}
+
+{% block content %}
+<main class="home">
+    <section class="card home__hero">
+        <h1 class="home__title">{{ project_name }}</h1>
+        <p class="home__slogan">{{ project_slogan }}</p>
+
+        <div class="home__actions">
+            <a class="btn btn-primary" href="#">Iniciar análise</a>
+            <a class="btn btn-secondary" href="/health/">Testar API</a>
+        </div>
+    </section>
+</main>
+{% endblock %}

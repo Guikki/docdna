@@ -1,0 +1,29 @@
+:root {
+    --color-bg: #f6f7fb;
+    --color-surface: #ffffff;
+    --color-text: #172033;
+    --color-muted: #6b7280;
+
+    --color-purple: #6d28d9;
+    --color-navy: #0f172a;
+    --color-pink: #ec4899;
+
+    --border-soft: #e5e7eb;
+    --shadow-soft: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}

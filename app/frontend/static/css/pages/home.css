@@ -1,0 +1,28 @@
+.home {
+    max-width: 1040px;
+    margin: 48px auto;
+    padding: 0 24px;
+}
+
+.home__hero {
+    display: grid;
+    gap: 18px;
+}
+
+.home__title {
+    font-size: 3rem;
+    margin: 0;
+    color: var(--color-navy);
+}
+
+.home__slogan {
+    font-size: 1.2rem;
+    color: var(--color-muted);
+    margin: 0;
+}
+
+.home__actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 18px;
+}

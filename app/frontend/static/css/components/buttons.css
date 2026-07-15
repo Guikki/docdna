@@ -1,0 +1,20 @@
+.btn {
+    border: none;
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-block;
+}
+
+.btn-primary {
+    background: var(--color-navy);
+    color: white;
+    border: 1px solid var(--color-navy);
+}
+
+.btn-secondary {
+    background: white;
+    color: var(--color-purple);
+    border: 1px solid var(--color-purple);
+}

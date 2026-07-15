@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link
+    rel="stylesheet"
+    href="{{ url_for('static', path='/css/pages/batch_result.css') }}?v=20260715-3"
+>
+{% endblock %}
+
+{% block content %}
+<main class="batch-page">
+
+    <section class="card batch-header">
+        <div class="batch-header__content">
+            <p class="section-eyebrow">
+                Processamento em lote
+            </p>
+
+            <h1 class="batch-header__title">
+                Resultado do lote
+            </h1>
+
+            <p class="batch-header__subtitle">
+                Consulte o resultado consolidado, examine os apontamentos
+                comparativos, exporte os dados e abra cada análise individual.
+            </p>
+        </div>
+
+        <div class="batch-header__actions">
+            <a
+                class="btn btn-primary"
+                href="/documents/batches/{{ batch.id }}/export/download"
+            >
+                Exportar para Excel
+            </a>
+
+            <a
+                class="btn btn-secondary"
+                href="/upload"
+            >
+                Novo envio
+            </a>
+        </div>
+    </section>
+
+    <section
+        class="batch-summary-grid"
+        aria-label="Resumo do lote"
+    >
+        <article class="card batch-summary-card">
+            <span class="batch-summary-card__label">
+                Status
+            </span>
+
+            <strong
+                class="
+                    batch-status
+                    batch-status--{{ batch.status }}
+                "
+            >
+                {{ batch.status_label }}
+            </strong>
+        </article>
+
+        <article class="card batch-summary-card">
+            <span class="batch-summary-card__label">
+                Progresso
+            </span>
+
+            <strong>
+                {{ batch.result.progress_label }}
+            </strong>
+        </article>
+
+        <article class="card batch-summary-card">
+            <span class="batch-summary-card__label">
+                Concluídos
+            </span>
+
+            <strong>
+                {{ batch.result.completed_documents }}
+            </strong>
+        </article>
+
+        <article class="card batch-summary-card">
+            <span class="batch-summary-card__label">
+                Falhas
+            </span>
+
+            <strong>
+                {{ batch.result.failed_documents }}
+            </strong>
+        </article>
+    </section>
+
+    <section class="card batch-progress-section">
+        <div class="batch-progress-section__header">
+            <div>
+                <p class="section-eyebrow">
+                    Progresso do processamento
+                </p>
+
+                <h2 class="section-title">
+                    {{ batch.result.completed_documents }}
+                    de
+                    {{ batch.result.total_documents }}
+                    documentos concluídos
+                </h2>
+            </div>
+
+            <strong class="batch-progress-section__percentage">
+                {{ batch.result.progress_label }}
+            </strong>
+        </div>
+
+        <div
+            class="batch-progress"
+            role="progressbar"
+            aria-label="Progresso do processamento do lote"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="{{ batch.result.progress_percentage }}"
+        >
+            <div
+                class="batch-progress__bar"
+                style="width: {{ batch.result.progress_percentage }}%;"
+            ></div>
+        </div>
+    </section>
+
+    <section
+        class="card evidence-section"
+        aria-labelledby="evidence-section-title"
+    >
+        <div class="evidence-section__header">
+            <div class="evidence-section__header-content">
+                <p class="section-eyebrow">
+                    Inteligência comparativa
+                </p>
+
+                <h2
+                    id="evidence-section-title"
+                    class="section-title"
+                >
+                    Evidências encontradas no lote
+                </h2>
+
+                <p class="evidence-summary">
+                    {{ evidence_report.summary_message }}
+                </p>
+            </div>
+        </div>
+
+        <div
+            class="evidence-overview"
+            aria-label="Resumo das evidências comparativas"
+        >
+            <article class="evidence-overview-card">
+                <span>
+                    Severidade predominante
+                </span>
+
+                <strong
+                    class="
+                        evidence-severity
+                        evidence-severity--{{ evidence_report.highest_severity or 'info' }}
+                    "
+                >
+                    {{ evidence_report.highest_severity_label }}
+                </strong>
+            </article>
+
+            <article class="evidence-overview-card">
+                <span>
+                    Total de apontamentos
+                </span>
+
+                <strong>
+                    {{ evidence_report.total }}
+                </strong>
+            </article>
+
+            <article class="evidence-overview-card">
+                <span>
+                    Severidade alta
+                </span>
+
+                <strong>
+                    {{ evidence_report.high }}
+                </strong>
+            </article>
+
+            <article class="evidence-overview-card">
+                <span>
+                    Informativos
+                </span>
+
+                <strong>
+                    {{ evidence_report.info }}
+                </strong>
+            </article>
+        </div>
+
+        {% if evidence_report.evidences %}
+            <div class="evidence-list">
+                {% for evidence in evidence_report.evidences %}
+                    <article
+                        class="
+                            evidence-card
+                            evidence-card--{{ evidence.severity }}
+                        "
+                    >
+                        <div class="evidence-card__header">
+                            <h3>
+                                {{ evidence.title }}
+                            </h3>
+
+                            <span
+                                class="
+                                    evidence-badge
+                                    evidence-badge--{{ evidence.severity }}
+                                "
+                            >
+                                {{ evidence.severity_label }}
+                            </span>
+                        </div>
+
+                        <p class="evidence-card__description">
+                            {{ evidence.description }}
+                        </p>
+
+                        <dl class="evidence-card__details">
+                            <div>
+                                <dt>Confiança</dt>
+                                <dd>
+                                    {{ evidence.confidence_label }}
+                                </dd>
+                            </div>
+
+                            <div>
+                                <dt>Documentos relacionados</dt>
+                                <dd>
+                                    {{ evidence.document_count }}
+                                </dd>
+                            </div>
+                        </dl>
+
+                        {% if evidence.document_names %}
+                            <div class="evidence-card__documents">
+                                <strong class="evidence-card__documents-title">
+                                    Documentos envolvidos
+                                </strong>
+
+                                <ul class="evidence-card__documents-list">
+                                    {% for document_name in evidence.document_names %}
+                                        <li>
+                                            {{ document_name }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        {% if evidence.itf %}
+                            <p class="evidence-card__itf">
+                                <strong>
+                                    Código ITF relacionado
+                                </strong>
+
+                                {{ evidence.itf }}
+                            </p>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="evidence-empty-state">
+                <strong>
+                    Nenhuma evidência comparativa encontrada
+                </strong>
+
+                <p>
+                    Não foram identificados padrões comparativos relevantes
+                    entre os documentos deste lote.
+                </p>
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="batch-content-grid">
+
+        <aside class="card batch-details">
+            <div class="batch-section-heading">
+                <p class="section-eyebrow">
+                    Dados técnicos
+                </p>
+
+                <h2 class="section-title">
+                    Informações do lote
+                </h2>
+            </div>
+
+            <dl class="batch-data">
+                <div>
+                    <dt>ID do lote</dt>
+                    <dd>{{ batch.id }}</dd>
+                </div>
+
+                <div>
+                    <dt>Criado em</dt>
+                    <dd>{{ batch.created_at }}</dd>
+                </div>
+
+                <div>
+                    <dt>Iniciado em</dt>
+                    <dd>{{ batch.started_at }}</dd>
+                </div>
+
+                <div>
+                    <dt>Finalizado em</dt>
+                    <dd>{{ batch.finished_at }}</dd>
+                </div>
+
+                <div>
+                    <dt>Pendentes</dt>
+                    <dd>{{ batch.result.pending_documents }}</dd>
+                </div>
+
+                <div>
+                    <dt>Em processamento</dt>
+                    <dd>{{ batch.result.processing_documents }}</dd>
+                </div>
+            </dl>
+        </aside>
+
+        <section class="card batch-documents-section">
+            <div class="batch-documents-section__header">
+                <div>
+                    <p class="section-eyebrow">
+                        Documentos do lote
+                    </p>
+
+                    <h2 class="section-title">
+                        {{ batch.result.total_documents }}
+                        documento(s)
+                    </h2>
+                </div>
+            </div>
+
+            <div class="batch-document-list">
+                {% for document in batch.documents %}
+                    <article
+                        class="
+                            batch-document
+                            batch-document--{{ document.status }}
+                        "
+                    >
+                        <div class="batch-document__main">
+                            <div
+                                class="batch-document__icon"
+                                aria-hidden="true"
+                            >
+                                PDF
+                            </div>
+
+                            <div class="batch-document__content">
+                                <strong>
+                                    {{ document.original_filename }}
+                                </strong>
+
+                                <span>
+                                    {{ document.status_label }}
+                                </span>
+
+                                {% if document.error_message %}
+                                    <p class="batch-document__error">
+                                        {{ document.error_message }}
+                                    </p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="batch-document__actions">
+                            {% if document.analysis_url %}
+                                <a
+                                    class="btn btn-secondary"
+                                    href="{{ document.analysis_url }}"
+                                >
+                                    Abrir análise
+                                </a>
+                            {% else %}
+                                <span class="batch-document__unavailable">
+                                    Resultado indisponível
+                                </span>
+                            {% endif %}
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+
+    </section>
+
+</main>
+{% endblock %}
