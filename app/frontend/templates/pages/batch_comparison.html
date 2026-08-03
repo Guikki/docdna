@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link
+    rel="stylesheet"
+    href="{{ url_for('static', path='/css/pages/batch_comparison.css') }}?v=20260730-1"
+>
+{% endblock %}
+
+{% block content %}
+<main class="comparison-page">
+
+    <section class="card comparison-header">
+        <div class="comparison-header__content">
+            <p class="section-eyebrow">
+                Inteligência comparativa
+            </p>
+
+            <h1 class="comparison-header__title">
+                Diagnóstico comparativo do lote
+            </h1>
+
+            <p class="comparison-header__subtitle">
+                Consulte os apontamentos identificados entre os documentos,
+                visualize os elementos relacionados e abra cada análise
+                individualmente.
+            </p>
+        </div>
+
+        <div class="comparison-header__actions">
+            <a
+                class="btn btn-secondary"
+                href="{{ comparison.batch_url }}"
+            >
+                Voltar ao lote
+            </a>
+        </div>
+    </section>
+
+    <section
+        class="comparison-summary-grid"
+        aria-label="Resumo do diagnóstico comparativo"
+    >
+        <article class="card comparison-summary-card">
+            <span>
+                Severidade predominante
+            </span>
+
+            <strong
+                class="
+                    comparison-severity
+                    comparison-severity--{{ comparison.highest_severity or 'info' }}
+                "
+            >
+                {{ comparison.highest_severity_label }}
+            </strong>
+        </article>
+
+        <article class="card comparison-summary-card">
+            <span>
+                Apontamentos
+            </span>
+
+            <strong>
+                {{ comparison.total_findings }}
+            </strong>
+        </article>
+
+        <article class="card comparison-summary-card">
+            <span>
+                Documentos relacionados
+            </span>
+
+            <strong>
+                {{ comparison.related_document_count }}
+            </strong>
+        </article>
+
+        <article class="card comparison-summary-card">
+            <span>
+                Total do lote
+            </span>
+
+            <strong>
+                {{ comparison.total_documents }}
+            </strong>
+        </article>
+    </section>
+
+    <section class="card comparison-intro">
+        <div>
+            <p class="section-eyebrow">
+                Síntese
+            </p>
+
+            <h2 class="section-title">
+                Resultado da correlação documental
+            </h2>
+
+            <p class="comparison-intro__message">
+                {{ comparison.summary_message }}
+            </p>
+        </div>
+
+        <dl class="comparison-severity-counts">
+            <div>
+                <dt>Críticos</dt>
+                <dd>{{ comparison.critical }}</dd>
+            </div>
+
+            <div>
+                <dt>Altos</dt>
+                <dd>{{ comparison.high }}</dd>
+            </div>
+
+            <div>
+                <dt>Médios</dt>
+                <dd>{{ comparison.medium }}</dd>
+            </div>
+
+            <div>
+                <dt>Baixos</dt>
+                <dd>{{ comparison.low }}</dd>
+            </div>
+
+            <div>
+                <dt>Informativos</dt>
+                <dd>{{ comparison.info }}</dd>
+            </div>
+        </dl>
+    </section>
+
+    {% if comparison.evidences %}
+        <section
+            class="comparison-findings"
+            aria-label="Apontamentos comparativos"
+        >
+            {% for evidence in comparison.evidences %}
+                <article
+                    class="
+                        card
+                        comparison-finding
+                        comparison-finding--{{ evidence.severity }}
+                    "
+                >
+                    <header class="comparison-finding__header">
+                        <div>
+                            <p class="comparison-finding__code">
+                                {{ evidence.category }}
+                            </p>
+
+                            <h2 class="comparison-finding__title">
+                                {{ evidence.title }}
+                            </h2>
+                        </div>
+
+                        <span
+                            class="
+                                comparison-badge
+                                comparison-badge--{{ evidence.severity }}
+                            "
+                        >
+                            {{ evidence.severity_label }}
+                        </span>
+                    </header>
+
+                    <p class="comparison-finding__description">
+                        {{ evidence.description }}
+                    </p>
+
+                    <dl class="comparison-finding__facts">
+                        <div>
+                            <dt>Confiança</dt>
+                            <dd>{{ evidence.confidence_label }}</dd>
+                        </div>
+
+                        <div>
+                            <dt>Documentos envolvidos</dt>
+                            <dd>{{ evidence.document_count }}</dd>
+                        </div>
+
+                        <div>
+                            <dt>Método de detecção</dt>
+                            <dd>{{ evidence.method_label }}</dd>
+                        </div>
+                    </dl>
+
+                    {% if evidence.itf %}
+                        <section class="comparison-code-block">
+                            <span>
+                                Código ITF relacionado
+                            </span>
+
+                            <code>
+                                {{ evidence.itf }}
+                            </code>
+                        </section>
+                    {% endif %}
+
+                    {% if evidence.documents %}
+                        <section class="comparison-related-documents">
+                            <div class="comparison-section-heading">
+                                <p class="section-eyebrow">
+                                    Documentos relacionados
+                                </p>
+
+                                <h3>
+                                    Análises envolvidas
+                                </h3>
+                            </div>
+
+                            <div class="comparison-document-list">
+                                {% for document in evidence.documents %}
+                                    <article class="comparison-document">
+                                        <div class="comparison-document__main">
+                                            <div
+                                                class="comparison-document__icon"
+                                                aria-hidden="true"
+                                            >
+                                                PDF
+                                            </div>
+
+                                            <div class="comparison-document__content">
+                                                <strong>
+                                                    {{ document.filename }}
+                                                </strong>
+
+                                                {% if document.status_label %}
+                                                    <span>
+                                                        {{ document.status_label }}
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        {% if document.analysis_url %}
+                                            <a
+                                                class="btn btn-secondary"
+                                                href="{{ document.analysis_url }}"
+                                            >
+                                                Abrir análise
+                                            </a>
+                                        {% endif %}
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    {% endif %}
+
+                    {% if evidence.compared_elements %}
+                        <section class="comparison-elements">
+                            <div class="comparison-section-heading">
+                                <p class="section-eyebrow">
+                                    Elementos comparados
+                                </p>
+
+                                <h3>
+                                    Dados extraídos dos fingerprints
+                                </h3>
+                            </div>
+
+                            <div class="comparison-element-grid">
+                                {% for element in evidence.compared_elements %}
+                                    <article class="comparison-element">
+                                        <header class="comparison-element__header">
+                                            <span
+                                                class="
+                                                    comparison-element__type
+                                                    comparison-element__type--{{ element.type }}
+                                                "
+                                            >
+                                                {{ element.type }}
+                                            </span>
+
+                                            <strong>
+                                                {{ element.label }}
+                                            </strong>
+                                        </header>
+
+                                        {% if element.fields %}
+                                            <dl class="comparison-element__data">
+                                                {% for field in element.fields %}
+                                                    <div>
+                                                        <dt>
+                                                            {{ field.label }}
+                                                        </dt>
+
+                                                        <dd
+                                                            {% if field.break_value %}
+                                                                class="comparison-value--break"
+                                                            {% endif %}
+                                                        >
+                                                            {{ field.value }}
+                                                        </dd>
+                                                    </div>
+                                                {% endfor %}
+                                            </dl>
+                                        {% endif %}
+
+                                        {% for hash in element.hashes %}
+                                            <details class="comparison-hash">
+                                                <summary>
+                                                    {{ hash.label }}
+                                                </summary>
+
+                                                <code>
+                                                    {{ hash.value }}
+                                                </code>
+                                            </details>
+                                        {% endfor %}
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    {% endif %}
+
+                    {% if evidence.technical_details %}
+                        <section class="comparison-technical-summary">
+                            <div class="comparison-section-heading">
+                                <p class="section-eyebrow">
+                                    Resultado técnico
+                                </p>
+
+                                <h3>
+                                    Métricas da comparação
+                                </h3>
+                            </div>
+
+                            <dl class="comparison-technical-grid">
+                                {% for detail in evidence.technical_details %}
+                                    <div>
+                                        <dt>
+                                            {{ detail.label }}
+                                        </dt>
+
+                                        <dd>
+                                            {{ detail.value }}
+                                        </dd>
+                                    </div>
+                                {% endfor %}
+                            </dl>
+                        </section>
+                    {% endif %}
+
+                    <details class="comparison-audit">
+                        <summary>
+                            Trilha técnica do apontamento
+                        </summary>
+
+                        <dl class="comparison-audit__data">
+                            <div>
+                                <dt>Código</dt>
+                                <dd>{{ evidence.code }}</dd>
+                            </div>
+
+                            <div>
+                                <dt>Componente de origem</dt>
+                                <dd>{{ evidence.source }}</dd>
+                            </div>
+                        </dl>
+                    </details>
+
+                    {% if evidence.numeric_lines_by_document %}
+                        <section class="comparison-numeric-lines">
+                            <div class="comparison-section-heading">
+                                <p class="section-eyebrow">
+                                    Sequências numéricas
+                                </p>
+
+                                <h3>
+                                    Conteúdo capturado por documento
+                                </h3>
+                            </div>
+
+                            <div class="comparison-numeric-line-list">
+                                {% for document in evidence.numeric_lines_by_document %}
+                                    <article class="comparison-numeric-line">
+                                        <strong>
+                                            {{ document.filename }}
+                                        </strong>
+
+                                        {% if document.numeric_lines %}
+                                            <ul>
+                                                {% for numeric_line in document.numeric_lines %}
+                                                    <li>
+                                                        <code>
+                                                            {{ numeric_line }}
+                                                        </code>
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% else %}
+                                            <p>
+                                                Nenhuma sequência numérica registrada.
+                                            </p>
+                                        {% endif %}
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </section>
+    {% else %}
+        <section class="card comparison-empty-state">
+            <strong>
+                Nenhum apontamento comparativo encontrado
+            </strong>
+
+            <p>
+                Não foram identificadas relações relevantes entre os
+                documentos deste lote.
+            </p>
+
+            <a
+                class="btn btn-secondary"
+                href="{{ comparison.batch_url }}"
+            >
+                Voltar ao resultado do lote
+            </a>
+        </section>
+    {% endif %}
+
+</main>
+{% endblock %}

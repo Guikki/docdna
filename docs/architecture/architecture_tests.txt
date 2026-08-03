@@ -1,0 +1,162 @@
+Listagem de caminhos de pasta para o volume OS
+O número de série do volume é 82C9-0B7D
+C:\USERS\GUIGO\ONEDRIVE\DOCUMENTOS\PESSOA E PESSOA\DOCDNA\TESTS
+|   __init__.py
+|   
++---domain
+|   |   __init__.py
+|   |   
+|   +---comparators
+|   |   |   test_cross_validation_engine.py
+|   |   |   test_image_fingerprint_comparator.py
+|   |   |   test_image_fingerprint_cross_comparator.py
+|   |   |   test_logo_fingerprint_comparator.py
+|   |   |   test_logo_fingerprint_cross_comparator.py
+|   |   |   test_qrcode_fingerprint_comparator.py
+|   |   |   test_qrcode_fingerprint_cross_comparator.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           test_cross_validation_engine.cpython-312-pytest-9.1.1.pyc
+|   |           test_image_fingerprint_comparator.cpython-312-pytest-9.1.1.pyc
+|   |           test_image_fingerprint_cross_comparator.cpython-312-pytest-9.1.1.pyc
+|   |           test_logo_fingerprint_comparator.cpython-312-pytest-9.1.1.pyc
+|   |           test_logo_fingerprint_cross_comparator.cpython-312-pytest-9.1.1.pyc
+|   |           test_qrcode_fingerprint_comparator.cpython-312-pytest-9.1.1.pyc
+|   |           test_qrcode_fingerprint_cross_comparator.cpython-312-pytest-9.1.1.pyc
+|   |           __init__.cpython-312.pyc
+|   |           
+|   +---detectors
+|   |   |   test_temporal_evidence_detector.py
+|   |   |   
+|   |   \---__pycache__
+|   |           test_temporal_evidence_detector.cpython-312-pytest-9.1.1.pyc
+|   |           
+|   +---fingerprints
+|   |   |   test_barcode_fingerprint.py
+|   |   |   test_image_fingerprint.py
+|   |   |   test_logo_fingerprint.py
+|   |   |   test_qrcode_fingerprint.py
+|   |   |   test_signature_fingerprint.py
+|   |   |   
+|   |   \---__pycache__
+|   |           test_barcode_fingerprint.cpython-312-pytest-9.1.1.pyc
+|   |           test_image_fingerprint.cpython-312-pytest-9.1.1.pyc
+|   |           test_logo_fingerprint.cpython-312-pytest-9.1.1.pyc
+|   |           test_qrcode_fingerprint.cpython-312-pytest-9.1.1.pyc
+|   |           test_signature_fingerprint.cpython-312-pytest-9.1.1.pyc
+|   |           
+|   +---integration
+|   |   |   test_image_cross_validation_pipeline.py
+|   |   |   
+|   |   \---__pycache__
+|   |           test_image_cross_validation_pipeline.cpython-312-pytest-9.1.1.pyc
+|   |           
+|   +---models
+|   |   |   test_cross_validation_execution.py
+|   |   |   test_cross_validation_execution_metrics.py
+|   |   |   test_document_fingerprint.py
+|   |   |   test_image_fingerprint_comparison.py
+|   |   |   test_image_fingerprint_pair.py
+|   |   |   test_image_hash_analysis.py
+|   |   |   test_image_match_classification.py
+|   |   |   test_logo_fingerprint_comparison.py
+|   |   |   test_logo_fingerprint_pair.py
+|   |   |   test_logo_match_classification.py
+|   |   |   test_qrcode_fingerprint_comparator.py
+|   |   |   test_qrcode_fingerprint_comparison.py
+|   |   |   test_qrcode_fingerprint_pair.py
+|   |   |   test_qrcode_match_classification.py
+|   |   |   test_similarity_type.py
+|   |   |   
+|   |   \---__pycache__
+|   |           test_cross_validation_execution.cpython-312-pytest-9.1.1.pyc
+|   |           test_cross_validation_execution_metrics.cpython-312-pytest-9.1.1.pyc
+|   |           test_document_fingerprint.cpython-312-pytest-9.1.1.pyc
+|   |           test_image_fingerprint_comparison.cpython-312-pytest-9.1.1.pyc
+|   |           test_image_fingerprint_pair.cpython-312-pytest-9.1.1.pyc
+|   |           test_image_hash_analysis.cpython-312-pytest-9.1.1.pyc
+|   |           test_image_match_classification.cpython-312-pytest-9.1.1.pyc
+|   |           test_logo_fingerprint_comparison.cpython-312-pytest-9.1.1.pyc
+|   |           test_logo_fingerprint_pair.cpython-312-pytest-9.1.1.pyc
+|   |           test_logo_match_classification.cpython-312-pytest-9.1.1.pyc
+|   |           test_qrcode_fingerprint_comparator.cpython-312-pytest-9.1.1.pyc
+|   |           test_qrcode_fingerprint_comparison.cpython-312-pytest-9.1.1.pyc
+|   |           test_qrcode_fingerprint_pair.cpython-312-pytest-9.1.1.pyc
+|   |           test_qrcode_match_classification.cpython-312-pytest-9.1.1.pyc
+|   |           test_similarity_type.cpython-312-pytest-9.1.1.pyc
+|   |           
+|   +---services
+|   |   |   test_date_extractor_service.py
+|   |   |   test_document_fingerprint_builder.py
+|   |   |   test_image_fingerprint_evidence_builder.py
+|   |   |   test_image_fingerprint_finding_builder.py
+|   |   |   test_image_fingerprint_match_classifier.py
+|   |   |   test_image_fingerprint_pair_generator.py
+|   |   |   test_logo_fingerprint_match_classifier.py
+|   |   |   test_logo_fingerprint_pair_generator.py
+|   |   |   test_pdf_metadata_date_extractor.py
+|   |   |   test_pdf_metadata_date_parser.py
+|   |   |   test_qrcode_fingerprint_finding_builder.py
+|   |   |   test_qrcode_fingerprint_match_classifier.py
+|   |   |   test_temporal_timeline.py
+|   |   |   test_temporal_timeline_builder.py
+|   |   |   
+|   |   \---__pycache__
+|   |           test_date_extractor_service.cpython-312-pytest-9.1.1.pyc
+|   |           test_document_fingerprint_builder.cpython-312-pytest-9.1.1.pyc
+|   |           test_image_fingerprint_evidence_builder.cpython-312-pytest-9.1.1.pyc
+|   |           test_image_fingerprint_finding_builder.cpython-312-pytest-9.1.1.pyc
+|   |           test_image_fingerprint_match_classifier.cpython-312-pytest-9.1.1.pyc
+|   |           test_image_fingerprint_pair_generator.cpython-312-pytest-9.1.1.pyc
+|   |           test_logo_fingerprint_match_classifier.cpython-312-pytest-9.1.1.pyc
+|   |           test_logo_fingerprint_pair_generator.cpython-312-pytest-9.1.1.pyc
+|   |           test_pdf_metadata_date_extractor.cpython-312-pytest-9.1.1.pyc
+|   |           test_pdf_metadata_date_parser.cpython-312-pytest-9.1.1.pyc
+|   |           test_qrcode_fingerprint_finding_builder.cpython-312-pytest-9.1.1.pyc
+|   |           test_qrcode_fingerprint_match_classifier.cpython-312-pytest-9.1.1.pyc
+|   |           test_temporal_timeline.cpython-312-pytest-9.1.1.pyc
+|   |           test_temporal_timeline_builder.cpython-312-pytest-9.1.1.pyc
+|   |           
+|   +---value_objects
+|   |   |   test_confidence_score.py
+|   |   |   test_document_location.py
+|   |   |   
+|   |   \---__pycache__
+|   |           test_confidence_score.cpython-312-pytest-9.1.1.pyc
+|   |           test_document_location.cpython-312-pytest-9.1.1.pyc
+|   |           
+|   \---__pycache__
+|           __init__.cpython-312.pyc
+|           
++---processors
+|   |   test_image_fingerprint_processor.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           test_image_fingerprint_processor.cpython-312-pytest-9.1.1.pyc
+|           __init__.cpython-312.pyc
+|           
++---services
+|   |   test_image_fingerprint_builder.py
+|   |   test_image_fingerprint_builder_from_analysis.py
+|   |   test_image_hash_analyzer.py
+|   |   test_logo_fingerprint_builder.py
+|   |   test_logo_fingerprint_finding_builder.py
+|   |   test_qrcode_fingerprint_builder.py
+|   |   test_signature_fingerprint_builder.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           test_image_fingerprint_builder.cpython-312-pytest-9.1.1.pyc
+|           test_image_fingerprint_builder_from_analysis.cpython-312-pytest-9.1.1.pyc
+|           test_image_hash_analyzer.cpython-312-pytest-9.1.1.pyc
+|           test_logo_fingerprint_builder.cpython-312-pytest-9.1.1.pyc
+|           test_logo_fingerprint_finding_builder.cpython-312-pytest-9.1.1.pyc
+|           test_qrcode_fingerprint_builder.cpython-312-pytest-9.1.1.pyc
+|           test_signature_fingerprint_builder.cpython-312-pytest-9.1.1.pyc
+|           __init__.cpython-312.pyc
+|           
+\---__pycache__
+        __init__.cpython-312.pyc
+        

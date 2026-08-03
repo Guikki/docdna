@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "language": "pt-BR",
+  "categories": {
+    "instruction_override": [],
+    "ai_targeting": [],
+    "role_manipulation": [],
+    "system_prompt_extraction": [],
+    "response_control": [],
+    "tool_manipulation": [],
+    "prompt_structure": []
+  }
+}

@@ -149,3 +149,137 @@ Foi criado o model:
 
 ```text
 app/domain/models/ocr_result.py
+
+---
+
+# Refatoração #1 — Consolidação da Camada de Fingerprints
+
+## Status
+
+Concluída.
+
+## Contexto
+
+Os ciclos CF-020 e CF-021 introduziram a primeira camada de identificação visual do DocDNA.
+
+Essa camada é responsável por representar elementos estruturais presentes em documentos, sem realizar qualquer inferência sobre autenticidade ou fraude.
+
+Cada fingerprint representa exclusivamente um elemento técnico identificado durante a leitura documental.
+
+A responsabilidade pela comparação entre fingerprints permanece restrita aos Comparators e Engines.
+
+## Fingerprints implementados
+
+```text
+Fingerprint
+├── BarcodeFingerprint
+├── ImageFingerprint
+│   ├── LogoFingerprint
+│   └── SignatureFingerprint
+└── QRCodeFingerprint
+```
+
+Todos os fingerprints são objetos imutáveis (`dataclass(frozen=True)`) e encapsulam apenas informações técnicas necessárias para as etapas posteriores da análise.
+
+---
+
+## Builders implementados
+
+Foi criada uma camada responsável pela construção dos fingerprints a partir das informações extraídas pelos Readers.
+
+Builders implementados:
+
+```text
+app/services/
+
+ImageFingerprintBuilder
+
+QRCodeFingerprintBuilder
+
+LogoFingerprintBuilder
+
+SignatureFingerprintBuilder
+```
+
+Esses componentes possuem uma única responsabilidade:
+
+converter dados técnicos extraídos pelos Readers em objetos pertencentes ao domínio.
+
+Eles não executam OCR, leitura de PDF, comparações ou inferências.
+
+---
+
+## Serviços de Domínio
+
+Permanece separada a camada de serviços de domínio.
+
+```text
+app/domain/services/
+```
+
+Essa camada contém apenas regras de negócio puras e componentes responsáveis por coordenar modelos do domínio.
+
+Não possui dependências de infraestrutura, FastAPI, banco de dados ou bibliotecas externas.
+
+---
+
+## Padronização das dataclasses
+
+Durante esta refatoração foi identificada uma incompatibilidade entre:
+
+- `@dataclass(slots=True)`
+- `super().__post_init__()`
+
+Todas as subclasses de `Fingerprint` passaram a invocar explicitamente o `__post_init__` da classe base, garantindo comportamento consistente e previsível.
+
+---
+
+## Testes
+
+Ao término da Refatoração #1 a suíte completa de testes foi executada com sucesso.
+
+Resultado:
+
+```text
+150 testes aprovados
+```
+
+A partir deste ponto, a camada de fingerprints é considerada estável.
+
+---
+
+## Próximos ciclos
+
+A próxima etapa da arquitetura inicia a integração entre Readers e Fingerprints.
+
+Roadmap:
+
+```text
+CF-022
+Extração automática de fingerprints
+
+↓
+
+CF-023
+Comparadores
+
+↓
+
+CF-024
+Evidence Builder
+
+↓
+
+CF-025
+Pipeline completa de análise documental
+```
+
+---
+
+## Backlog Arquitetural
+
+Itens aprovados para futura avaliação:
+
+- Reavaliar a criação de uma camada explícita de Application caso o crescimento do projeto justifique a separação entre `app/services` e `app/domain/services`.
+- Revisar a localização do model `DocumentImage` conforme a evolução da infraestrutura de leitura documental.
+- Expandir a cobertura com testes de integração da pipeline completa.

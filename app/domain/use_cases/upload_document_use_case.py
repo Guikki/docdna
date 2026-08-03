@@ -79,6 +79,12 @@ class UploadDocumentUseCase:
             "native_text": analysis_context.native_text,
             "ocr": analysis_context.ocr,
             "images": analysis_context.images,
+            "image_fingerprints": (
+                analysis_context.image_fingerprints
+            ),
+            "normalized_document": (
+                analysis_context.normalized_document
+            ),
             "barcodes": analysis_context.barcodes,
             "printed_numeric_lines": analysis_context.printed_numeric_lines,
             "numeric_line_validations": analysis_context.numeric_line_validations,

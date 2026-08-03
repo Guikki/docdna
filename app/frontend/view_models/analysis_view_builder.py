@@ -15,6 +15,8 @@ class AnalysisViewBuilder:
         pdf_info = analysis_data["pdf_info"]
         native_text = analysis_data["native_text"]
         ocr = analysis_data["ocr"]
+        normalized_document = analysis_data.get("normalized_document")
+        image_fingerprints = analysis_data.get("image_fingerprints", [])
         images = analysis_data["images"]
         barcodes = analysis_data["barcodes"]
         printed_numeric_lines = analysis_data["printed_numeric_lines"]
@@ -113,6 +115,13 @@ class AnalysisViewBuilder:
             }
         )
 
+        formatted_normalized_pages = self._build_normalized_pages(
+            normalized_document
+        )
+        formatted_image_fingerprints = self._build_image_fingerprints(
+            image_fingerprints
+        )
+
         formatted_numeric_line_locations = [
             {
                 "line_index": location.line_index,
@@ -209,12 +218,44 @@ class AnalysisViewBuilder:
             "ocr_pages_with_text": ocr.pages_with_text,
             "ocr_language": ocr.language,
 
+            # Documento normalizado
+            "has_normalized_document": normalized_document is not None,
+            "normalized_document_page_count": (
+                normalized_document.page_count if normalized_document else 0
+            ),
+            "normalized_document_text_span_count": (
+                normalized_document.text_span_count if normalized_document else 0
+            ),
+            "normalized_document_word_count": (
+                normalized_document.word_count if normalized_document else 0
+            ),
+            "normalized_document_character_count": (
+                normalized_document.character_count if normalized_document else 0
+            ),
+            "normalized_document_normalized_character_count": (
+                normalized_document.normalized_character_count
+                if normalized_document else 0
+            ),
+            "normalized_document_pages_with_text": (
+                len(normalized_document.pages_with_visible_text())
+                if normalized_document else 0
+            ),
+            "normalized_document_text": (
+                normalized_document.normalized_text if normalized_document else ""
+            ),
+            "normalized_pages": formatted_normalized_pages,
+
             # Imagens
             "images": images,
             "image_count": len(images),
 
             "image_message": self._build_image_message(
                 len(images)
+            ),
+            "image_fingerprints": formatted_image_fingerprints,
+            "image_fingerprint_count": len(formatted_image_fingerprints),
+            "image_fingerprint_message": self._build_image_fingerprint_message(
+                len(formatted_image_fingerprints)
             ),
 
             # Códigos
@@ -585,21 +626,97 @@ class AnalysisViewBuilder:
         return BRASILIA_TIMEZONE
 
     def _format_confidence(
-            self,
-            confidence: float | None,
-    ) -> str:
-        if confidence is None:
-            return "Não informada"
-
-        return f"{confidence:.1f}%"
-    def _format_confidence(
         self,
         confidence: float | None,
     ) -> str:
         if confidence is None:
             return "Não informada"
-
         return f"{confidence:.1f}%"
+
+    def _build_normalized_pages(self, document: Any) -> list[dict[str, Any]]:
+        if document is None:
+            return []
+        result = []
+        for page in document.pages:
+            box = page.text_bounding_box
+            result.append({
+                "number": page.number,
+                "width": self._format_decimal(page.width),
+                "height": self._format_decimal(page.height),
+                "area": self._format_decimal(page.area),
+                "aspect_ratio": self._format_decimal(page.aspect_ratio, decimals=3),
+                "text_span_count": page.text_span_count,
+                "word_count": page.word_count,
+                "character_count": page.character_count,
+                "has_visible_text": page.has_visible_text,
+                "text_bounding_box": None if box is None else {
+                    "left": self._format_decimal(box.left),
+                    "top": self._format_decimal(box.top),
+                    "width": self._format_decimal(box.width),
+                    "height": self._format_decimal(box.height),
+                },
+                "sample_spans": [{
+                    "normalized_text": span.normalized_text,
+                    "font_name": span.font.name,
+                    "font_size": self._format_decimal(span.font.size),
+                    "left": self._format_decimal(span.bounding_box.left),
+                    "top": self._format_decimal(span.bounding_box.top),
+                    "width": self._format_decimal(span.bounding_box.width),
+                    "height": self._format_decimal(span.bounding_box.height),
+                } for span in page.text_spans[:8]],
+            })
+        return result
+
+    def _build_image_fingerprints(self, fingerprints: list[Any]) -> list[dict[str, Any]]:
+        result = []
+        for index, fingerprint in enumerate(fingerprints, start=1):
+            location = getattr(fingerprint, "location", None)
+            box = getattr(location, "bounding_box", None)
+            confidence = getattr(fingerprint, "confidence", None)
+            confidence_value = getattr(confidence, "value", confidence)
+            result.append({
+                "index": index,
+                "page_number": getattr(location, "page_number", None),
+                "width": getattr(fingerprint, "width", None),
+                "height": getattr(fingerprint, "height", None),
+                "mime_type": getattr(fingerprint, "mime_type", None) or "Não identificado",
+                "dpi": getattr(fingerprint, "dpi", None),
+                "description": getattr(fingerprint, "description", None) or "Sem descrição técnica.",
+                "confidence": self._format_ratio_as_percentage(confidence_value),
+                "image_hash": getattr(fingerprint, "image_hash", None),
+                "perceptual_hash": getattr(fingerprint, "perceptual_hash", None),
+                "average_hash": getattr(fingerprint, "average_hash", None),
+                "difference_hash": getattr(fingerprint, "difference_hash", None),
+                "location": None if box is None else {
+                    "x": self._format_decimal(getattr(box, "x", 0.0)),
+                    "y": self._format_decimal(getattr(box, "y", 0.0)),
+                    "width": self._format_decimal(getattr(box, "width", 0.0)),
+                    "height": self._format_decimal(getattr(box, "height", 0.0)),
+                },
+            })
+        return result
+
+    def _build_image_fingerprint_message(self, count: int) -> str:
+        if count == 0:
+            return "Nenhum fingerprint de imagem foi produzido."
+        if count == 1:
+            return "Foi produzido 1 fingerprint técnico de imagem."
+        return f"Foram produzidos {count} fingerprints técnicos de imagem."
+
+    def _format_decimal(self, value: Any, *, decimals: int = 2) -> str:
+        try:
+            return f"{float(value):.{decimals}f}"
+        except (TypeError, ValueError):
+            return "Não informado"
+
+    def _format_ratio_as_percentage(self, value: Any) -> str:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return "Não informada"
+        if 0.0 <= number <= 1.0:
+            number *= 100.0
+        return f"{number:.1f}%"
 
     def _build_extracted_file_url(
         self,

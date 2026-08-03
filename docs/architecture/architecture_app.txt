@@ -1,0 +1,568 @@
+Listagem de caminhos de pasta para o volume OS
+O número de série do volume é 82C9-0B7D
+C:\USERS\GUIGO\ONEDRIVE\DOCUMENTOS\PESSOA E PESSOA\DOCDNA\APP
+|   main.py
+|   __init__.py
+|   
++---api
+|   |   routes.py
+|   |   __init__.py
+|   |   
+|   +---endpoints
+|   |   |   documents.py
+|   |   |   health.py
+|   |   |   pdf.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           documents.cpython-312.pyc
+|   |           documents.cpython-313.pyc
+|   |           health.cpython-312.pyc
+|   |           health.cpython-313.pyc
+|   |           pdf.cpython-312.pyc
+|   |           pdf.cpython-313.pyc
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   \---__pycache__
+|           routes.cpython-312.pyc
+|           routes.cpython-313.pyc
+|           __init__.cpython-312.pyc
+|           __init__.cpython-313.pyc
+|           
++---config
+|   |   settings.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           settings.cpython-312.pyc
+|           settings.cpython-313.pyc
+|           __init__.cpython-312.pyc
+|           __init__.cpython-313.pyc
+|           
++---domain
+|   |   __init__.py
+|   |   
+|   +---analyzers
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---builders
+|   |   |   analysis_context_builder.py
+|   |   |   evidence_report_builder.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           analysis_context_builder.cpython-312.pyc
+|   |           analysis_context_builder.cpython-313.pyc
+|   |           evidence_report_builder.cpython-312.pyc
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---comparators
+|   |   |   base_comparator.py
+|   |   |   cross_validation_engine.py
+|   |   |   duplicate_itf_comparator.py
+|   |   |   duplicate_itf_different_numeric_line_comparator.py
+|   |   |   image_fingerprint_comparator.py
+|   |   |   image_fingerprint_cross_comparator.py
+|   |   |   logo_fingerprint_comparator.py
+|   |   |   logo_fingerprint_cross_comparator.py
+|   |   |   qrcode_fingerprint_comparator.py
+|   |   |   qrcode_fingerprint_cross_comparator.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           base_comparator.cpython-312.pyc
+|   |           cross_validation_engine.cpython-312.pyc
+|   |           duplicate_itf_comparator.cpython-312.pyc
+|   |           duplicate_itf_different_numeric_line_comparator.cpython-312.pyc
+|   |           image_fingerprint_comparator.cpython-312.pyc
+|   |           image_fingerprint_cross_comparator.cpython-312.pyc
+|   |           logo_fingerprint_comparator.cpython-312.pyc
+|   |           logo_fingerprint_cross_comparator.cpython-312.pyc
+|   |           qrcode_fingerprint_comparator.cpython-312.pyc
+|   |           qrcode_fingerprint_cross_comparator.cpython-312.pyc
+|   |           __init__.cpython-312.pyc
+|   |           
+|   +---detectors
+|   |   |   barcode_numeric_line_detector.py
+|   |   |   barcode_presence_detector.py
+|   |   |   base_detector.py
+|   |   |   temporal_evidence_detector.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           barcode_numeric_line_detector.cpython-312.pyc
+|   |           barcode_numeric_line_detector.cpython-313.pyc
+|   |           barcode_presence_detector.cpython-312.pyc
+|   |           barcode_presence_detector.cpython-313.pyc
+|   |           base_detector.cpython-312.pyc
+|   |           base_detector.cpython-313.pyc
+|   |           temporal_evidence_detector.cpython-312.pyc
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---engines
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---evidence
+|   |   |   evidence.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           evidence.cpython-312.pyc
+|   |           evidence.cpython-313.pyc
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---factories
+|   |   |   batch_factory.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           batch_factory.cpython-312.pyc
+|   |           batch_factory.cpython-313.pyc
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---fingerprints
+|   |   |   barcode_fingerprint.py
+|   |   |   fingerprint.py
+|   |   |   image_fingerprint.py
+|   |   |   logo_fingerprint.py
+|   |   |   qrcode_fingerprint.py
+|   |   |   signature_fingerprint.py
+|   |   |   
+|   |   \---__pycache__
+|   |           barcode_fingerprint.cpython-312.pyc
+|   |           fingerprint.cpython-312.pyc
+|   |           image_fingerprint.cpython-312.pyc
+|   |           logo_fingerprint.cpython-312.pyc
+|   |           qrcode_fingerprint.cpython-312.pyc
+|   |           signature_fingerprint.cpython-312.pyc
+|   |           
+|   +---models
+|   |   |   analysis_context.py
+|   |   |   barcode.py
+|   |   |   barcode_line_comparison.py
+|   |   |   batch.py
+|   |   |   batch_document.py
+|   |   |   batch_result.py
+|   |   |   cross_validation_execution.py
+|   |   |   cross_validation_execution_metrics.py
+|   |   |   cross_validation_finding.py
+|   |   |   cross_validation_result.py
+|   |   |   detected_date.py
+|   |   |   document.py
+|   |   |   document_evidence.py
+|   |   |   document_fingerprint.py
+|   |   |   document_image.py
+|   |   |   document_ocr.py
+|   |   |   document_text.py
+|   |   |   evidence_report.py
+|   |   |   image_fingerprint_comparison.py
+|   |   |   image_fingerprint_pair.py
+|   |   |   image_hash_analysis.py
+|   |   |   image_match_classification.py
+|   |   |   logo_fingerprint_comparison.py
+|   |   |   logo_fingerprint_pair.py
+|   |   |   logo_match_classification.py
+|   |   |   numeric_line_location.py
+|   |   |   numeric_line_validation.py
+|   |   |   ocr_result.py
+|   |   |   ocr_text_box.py
+|   |   |   pdf_info.py
+|   |   |   printed_numeric_line.py
+|   |   |   qrcode_fingerprint_comparison.py
+|   |   |   qrcode_fingerprint_pair.py
+|   |   |   qrcode_match_classification.py
+|   |   |   similarity_match.py
+|   |   |   similarity_type.py
+|   |   |   temporal_timeline.py
+|   |   |   temporal_timeline_builder.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           analysis_context.cpython-312.pyc
+|   |           analysis_context.cpython-313.pyc
+|   |           barcode.cpython-312.pyc
+|   |           barcode.cpython-313.pyc
+|   |           barcode_line_comparison.cpython-312.pyc
+|   |           barcode_line_comparison.cpython-313.pyc
+|   |           batch.cpython-312.pyc
+|   |           batch.cpython-313.pyc
+|   |           batch_document.cpython-312.pyc
+|   |           batch_document.cpython-313.pyc
+|   |           batch_result.cpython-312.pyc
+|   |           batch_result.cpython-313.pyc
+|   |           cross_validation_execution.cpython-312.pyc
+|   |           cross_validation_execution_metrics.cpython-312.pyc
+|   |           cross_validation_finding.cpython-312.pyc
+|   |           cross_validation_result.cpython-312.pyc
+|   |           detected_date.cpython-312.pyc
+|   |           document.cpython-312.pyc
+|   |           document.cpython-313.pyc
+|   |           document_evidence.cpython-312.pyc
+|   |           document_fingerprint.cpython-312.pyc
+|   |           document_image.cpython-312.pyc
+|   |           document_image.cpython-313.pyc
+|   |           document_ocr.cpython-312.pyc
+|   |           document_ocr.cpython-313.pyc
+|   |           document_text.cpython-312.pyc
+|   |           document_text.cpython-313.pyc
+|   |           evidence_report.cpython-312.pyc
+|   |           image_fingerprint_comparison.cpython-312.pyc
+|   |           image_fingerprint_pair.cpython-312.pyc
+|   |           image_hash_analysis.cpython-312.pyc
+|   |           image_match_classification.cpython-312.pyc
+|   |           logo_fingerprint_comparison.cpython-312.pyc
+|   |           logo_fingerprint_pair.cpython-312.pyc
+|   |           logo_match_classification.cpython-312.pyc
+|   |           numeric_line_location.cpython-312.pyc
+|   |           numeric_line_location.cpython-313.pyc
+|   |           numeric_line_validation.cpython-312.pyc
+|   |           numeric_line_validation.cpython-313.pyc
+|   |           ocr_result.cpython-312.pyc
+|   |           ocr_result.cpython-313.pyc
+|   |           ocr_text_box.cpython-312.pyc
+|   |           ocr_text_box.cpython-313.pyc
+|   |           pdf_info.cpython-312.pyc
+|   |           pdf_info.cpython-313.pyc
+|   |           printed_numeric_line.cpython-312.pyc
+|   |           printed_numeric_line.cpython-313.pyc
+|   |           qrcode_fingerprint_comparison.cpython-312.pyc
+|   |           qrcode_fingerprint_pair.cpython-312.pyc
+|   |           qrcode_match_classification.cpython-312.pyc
+|   |           similarity_type.cpython-312.pyc
+|   |           temporal_timeline.cpython-312.pyc
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---readers
+|   |   |   barcode_reader.py
+|   |   |   base_reader.py
+|   |   |   image_reader.py
+|   |   |   native_text_reader.py
+|   |   |   ocr_reader.py
+|   |   |   pdf_reader.py
+|   |   |   printed_numeric_line_reader.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           barcode_reader.cpython-312.pyc
+|   |           barcode_reader.cpython-313.pyc
+|   |           base_reader.cpython-312.pyc
+|   |           base_reader.cpython-313.pyc
+|   |           image_reader.cpython-312.pyc
+|   |           image_reader.cpython-313.pyc
+|   |           native_text_reader.cpython-312.pyc
+|   |           native_text_reader.cpython-313.pyc
+|   |           ocr_reader.cpython-312.pyc
+|   |           ocr_reader.cpython-313.pyc
+|   |           pdf_reader.cpython-312.pyc
+|   |           pdf_reader.cpython-313.pyc
+|   |           printed_numeric_line_reader.cpython-312.pyc
+|   |           printed_numeric_line_reader.cpython-313.pyc
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---rules
+|   |   |   numeric_line_converter.py
+|   |   |   numeric_line_validator.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           numeric_line_converter.cpython-312.pyc
+|   |           numeric_line_converter.cpython-313.pyc
+|   |           numeric_line_validator.cpython-312.pyc
+|   |           numeric_line_validator.cpython-313.pyc
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---services
+|   |   |   batch_cross_validation_service.py
+|   |   |   batch_excel_export_service.py
+|   |   |   batch_processor.py
+|   |   |   batch_state_service.py
+|   |   |   date_extractor_service.py
+|   |   |   document_fingerprint_builder.py
+|   |   |   image_fingerprint_evidence_builder.py
+|   |   |   image_fingerprint_finding_builder.py
+|   |   |   image_fingerprint_match_classifier.py
+|   |   |   image_fingerprint_pair_generator.py
+|   |   |   logo_fingerprint_finding_builder.py
+|   |   |   logo_fingerprint_match_classifier.py
+|   |   |   logo_fingerprint_pair_generator.py
+|   |   |   numeric_line_visual_evidence_builder.py
+|   |   |   pdf_metadata_date_extractor.py
+|   |   |   pdf_metadata_date_parser.py
+|   |   |   qrcode_fingerprint_finding_builder.py
+|   |   |   qrcode_fingerprint_match_classifier.py
+|   |   |   temporal_timeline_builder.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           batch_cross_validation_service.cpython-312.pyc
+|   |           batch_excel_export_service.cpython-312.pyc
+|   |           batch_processor.cpython-312.pyc
+|   |           batch_processor.cpython-313.pyc
+|   |           batch_state_service.cpython-312.pyc
+|   |           batch_state_service.cpython-313.pyc
+|   |           date_extractor_service.cpython-312.pyc
+|   |           document_fingerprint_builder.cpython-312.pyc
+|   |           image_fingerprint_evidence_builder.cpython-312.pyc
+|   |           image_fingerprint_finding_builder.cpython-312.pyc
+|   |           image_fingerprint_match_classifier.cpython-312.pyc
+|   |           image_fingerprint_pair_generator.cpython-312.pyc
+|   |           logo_fingerprint_finding_builder.cpython-312.pyc
+|   |           logo_fingerprint_match_classifier.cpython-312.pyc
+|   |           logo_fingerprint_pair_generator.cpython-312.pyc
+|   |           numeric_line_visual_evidence_builder.cpython-312.pyc
+|   |           numeric_line_visual_evidence_builder.cpython-313.pyc
+|   |           pdf_metadata_date_extractor.cpython-312.pyc
+|   |           pdf_metadata_date_parser.cpython-312.pyc
+|   |           qrcode_fingerprint_finding_builder.cpython-312.pyc
+|   |           qrcode_fingerprint_match_classifier.cpython-312.pyc
+|   |           temporal_timeline_builder.cpython-312.pyc
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---shared
+|   |   |   constants.py
+|   |   |   enums.py
+|   |   |   types.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           constants.cpython-312.pyc
+|   |           constants.cpython-313.pyc
+|   |           enums.cpython-312.pyc
+|   |           enums.cpython-313.pyc
+|   |           types.cpython-312.pyc
+|   |           types.cpython-313.pyc
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---use_cases
+|   |   |   upload_document_use_case.py
+|   |   |   
+|   |   \---__pycache__
+|   |           upload_document_use_case.cpython-312.pyc
+|   |           upload_document_use_case.cpython-313.pyc
+|   |           
+|   +---value_objects
+|   |   |   bounding_box.py
+|   |   |   confidence_score.py
+|   |   |   document_location.py
+|   |   |   test_bounding_box.py
+|   |   |   
+|   |   \---__pycache__
+|   |           bounding_box.cpython-312.pyc
+|   |           confidence_score.cpython-312.pyc
+|   |           document_location.cpython-312.pyc
+|   |           test_bounding_box.cpython-312-pytest-9.1.1.pyc
+|   |           
+|   \---__pycache__
+|           __init__.cpython-312.pyc
+|           __init__.cpython-313.pyc
+|           
++---exceptions
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           __init__.cpython-312.pyc
+|           __init__.cpython-313.pyc
+|           
++---frontend
+|   +---static
+|   |   +---assets
+|   |   |   +---icons
+|   |   |   +---images
+|   |   |   \---logos
+|   |   +---css
+|   |   |   |   global.css
+|   |   |   |   
+|   |   |   +---components
+|   |   |   |       buttons.css
+|   |   |   |       cards.css
+|   |   |   |       topbar.css
+|   |   |   |       
+|   |   |   \---pages
+|   |   |           analysis_result.css
+|   |   |           batch_comparison.css
+|   |   |           batch_result.css
+|   |   |           home.css
+|   |   |           upload.css
+|   |   |           
+|   |   \---js
+|   |       +---components
+|   |       \---pages
+|   |               upload.js
+|   |               
+|   +---templates
+|   |   |   base.html
+|   |   |   
+|   |   +---layouts
+|   |   +---pages
+|   |   |       analysis_result.html
+|   |   |       batch_comparison.html
+|   |   |       batch_result.html
+|   |   |       home.html
+|   |   |       upload.html
+|   |   |       
+|   |   \---partials
+|   |           topbar.html
+|   |           
+|   \---view_models
+|       |   analysis_view_builder.py
+|       |   batch_view_builder.py
+|       |   comparison_view_builder.py
+|       |   evidence_presentation_catalog.py
+|       |   evidence_report_view_builder.py
+|       |   __init__.py
+|       |   
+|       \---__pycache__
+|               analysis_view_builder.cpython-312.pyc
+|               analysis_view_builder.cpython-313.pyc
+|               batch_view_builder.cpython-312.pyc
+|               comparison_view_builder.cpython-312.pyc
+|               evidence_presentation_catalog.cpython-312.pyc
+|               evidence_report_view_builder.cpython-312.pyc
+|               __init__.cpython-312.pyc
+|               __init__.cpython-313.pyc
+|               
++---infrastructure
+|   |   __init__.py
+|   |   
+|   +---database
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---import_export
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---reports
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   +---repositories
+|   |   |   analysis_memory_repository.py
+|   |   |   batch_memory_repository.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           analysis_memory_repository.cpython-312.pyc
+|   |           analysis_memory_repository.cpython-313.pyc
+|   |           batch_memory_repository.cpython-312.pyc
+|   |           __init__.cpython-312.pyc
+|   |           __init__.cpython-313.pyc
+|   |           
+|   \---__pycache__
+|           __init__.cpython-312.pyc
+|           __init__.cpython-313.pyc
+|           
++---processors
+|   |   image_fingerprint_processor.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           image_fingerprint_processor.cpython-312.pyc
+|           __init__.cpython-312.pyc
+|           
++---schemas
+|   |   barcode_line_comparison_schemas.py
+|   |   barcode_schemas.py
+|   |   batch_export_schemas.py
+|   |   batch_schemas.py
+|   |   cross_validation_schemas.py
+|   |   document_schemas.py
+|   |   evidence_schemas.py
+|   |   image_schemas.py
+|   |   numeric_line_location_schemas.py
+|   |   numeric_line_validation_schemas.py
+|   |   ocr_schemas.py
+|   |   pdf_schemas.py
+|   |   printed_numeric_line_schemas.py
+|   |   text_schemas.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           barcode_line_comparison_schemas.cpython-312.pyc
+|           barcode_line_comparison_schemas.cpython-313.pyc
+|           barcode_schemas.cpython-312.pyc
+|           barcode_schemas.cpython-313.pyc
+|           batch_export_schemas.cpython-312.pyc
+|           batch_schemas.cpython-312.pyc
+|           cross_validation_schemas.cpython-312.pyc
+|           document_schemas.cpython-312.pyc
+|           document_schemas.cpython-313.pyc
+|           evidence_schemas.cpython-312.pyc
+|           evidence_schemas.cpython-313.pyc
+|           image_schemas.cpython-312.pyc
+|           image_schemas.cpython-313.pyc
+|           numeric_line_location_schemas.cpython-312.pyc
+|           numeric_line_location_schemas.cpython-313.pyc
+|           numeric_line_validation_schemas.cpython-312.pyc
+|           numeric_line_validation_schemas.cpython-313.pyc
+|           ocr_schemas.cpython-312.pyc
+|           ocr_schemas.cpython-313.pyc
+|           pdf_schemas.cpython-312.pyc
+|           pdf_schemas.cpython-313.pyc
+|           printed_numeric_line_schemas.cpython-312.pyc
+|           printed_numeric_line_schemas.cpython-313.pyc
+|           text_schemas.cpython-312.pyc
+|           text_schemas.cpython-313.pyc
+|           __init__.cpython-312.pyc
+|           __init__.cpython-313.pyc
+|           
++---services
+|   |   image_fingerprint_builder.py
+|   |   image_hash_analyzer.py
+|   |   logo_fingerprint_builder.py
+|   |   qrcode_fingerprint_builder.py
+|   |   signature_fingerprint_builder.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           image_fingerprint_builder.cpython-312.pyc
+|           image_hash_analyzer.cpython-312.pyc
+|           logo_fingerprint_builder.cpython-312.pyc
+|           logo_fingerprint_finding_builder.cpython-312.pyc
+|           qrcode_fingerprint_builder.cpython-312.pyc
+|           signature_fingerprint_builder.cpython-312.pyc
+|           __init__.cpython-312.pyc
+|           
++---utils
+|   |   hash_utils.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           hash_utils.cpython-312.pyc
+|           hash_utils.cpython-313.pyc
+|           __init__.cpython-312.pyc
+|           __init__.cpython-313.pyc
+|           
+\---__pycache__
+        main.cpython-312.pyc
+        main.cpython-313.pyc
+        __init__.cpython-312.pyc
+        __init__.cpython-313.pyc
+        

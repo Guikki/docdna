@@ -3,7 +3,7 @@
 {% block styles %}
 <link
     rel="stylesheet"
-    href="{{ url_for('static', path='/css/pages/batch_result.css') }}?v=20260715-3"
+    href="{{ url_for('static', path='/css/pages/batch_result.css') }}?v=20260716-1"
 >
 {% endblock %}
 
@@ -142,141 +142,90 @@
                     id="evidence-section-title"
                     class="section-title"
                 >
-                    Evidências encontradas no lote
+                    Diagnóstico comparativo do lote
                 </h2>
-
-                <p class="evidence-summary">
-                    {{ evidence_report.summary_message }}
-                </p>
             </div>
         </div>
 
-        <div
-            class="evidence-overview"
-            aria-label="Resumo das evidências comparativas"
-        >
-            <article class="evidence-overview-card">
-                <span>
-                    Severidade predominante
-                </span>
-
-                <strong
-                    class="
-                        evidence-severity
-                        evidence-severity--{{ evidence_report.highest_severity or 'info' }}
-                    "
-                >
-                    {{ evidence_report.highest_severity_label }}
-                </strong>
-            </article>
-
-            <article class="evidence-overview-card">
-                <span>
-                    Total de apontamentos
-                </span>
-
-                <strong>
-                    {{ evidence_report.total }}
-                </strong>
-            </article>
-
-            <article class="evidence-overview-card">
-                <span>
-                    Severidade alta
-                </span>
-
-                <strong>
-                    {{ evidence_report.high }}
-                </strong>
-            </article>
-
-            <article class="evidence-overview-card">
-                <span>
-                    Informativos
-                </span>
-
-                <strong>
-                    {{ evidence_report.info }}
-                </strong>
-            </article>
-        </div>
-
         {% if evidence_report.evidences %}
-            <div class="evidence-list">
-                {% for evidence in evidence_report.evidences %}
-                    <article
-                        class="
-                            evidence-card
-                            evidence-card--{{ evidence.severity }}
-                        "
-                    >
-                        <div class="evidence-card__header">
-                            <h3>
-                                {{ evidence.title }}
-                            </h3>
+            <div class="evidence-dashboard">
 
-                            <span
-                                class="
-                                    evidence-badge
-                                    evidence-badge--{{ evidence.severity }}
-                                "
-                            >
-                                {{ evidence.severity_label }}
-                            </span>
-                        </div>
+                <div class="evidence-dashboard__message">
+                    <h3>
+                        Resumo executivo
+                    </h3>
 
-                        <p class="evidence-card__description">
-                            {{ evidence.description }}
-                        </p>
+                    <p>
+                        {{ evidence_report.summary_message }}
+                    </p>
+                </div>
 
-                        <dl class="evidence-card__details">
-                            <div>
-                                <dt>Confiança</dt>
-                                <dd>
-                                    {{ evidence.confidence_label }}
-                                </dd>
-                            </div>
+                <div
+                    class="evidence-dashboard__stats"
+                    aria-label="Resumo dos apontamentos comparativos"
+                >
+                    <article>
+                        <span>
+                            Severidade predominante
+                        </span>
 
-                            <div>
-                                <dt>Documentos relacionados</dt>
-                                <dd>
-                                    {{ evidence.document_count }}
-                                </dd>
-                            </div>
-                        </dl>
-
-                        {% if evidence.document_names %}
-                            <div class="evidence-card__documents">
-                                <strong class="evidence-card__documents-title">
-                                    Documentos envolvidos
-                                </strong>
-
-                                <ul class="evidence-card__documents-list">
-                                    {% for document_name in evidence.document_names %}
-                                        <li>
-                                            {{ document_name }}
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        {% endif %}
-
-                        {% if evidence.itf %}
-                            <p class="evidence-card__itf">
-                                <strong>
-                                    Código ITF relacionado
-                                </strong>
-
-                                {{ evidence.itf }}
-                            </p>
-                        {% endif %}
+                        <strong
+                            class="
+                                evidence-severity
+                                evidence-severity--{{ evidence_report.highest_severity or 'info' }}
+                            "
+                        >
+                            {{ evidence_report.highest_severity_label }}
+                        </strong>
                     </article>
-                {% endfor %}
+
+                    <article>
+                        <span>
+                            Apontamentos encontrados
+                        </span>
+
+                        <strong>
+                            {{ evidence_report.total }}
+                        </strong>
+                    </article>
+
+                    <article>
+                        <span>
+                            Severidade alta
+                        </span>
+
+                        <strong>
+                            {{ evidence_report.high }}
+                        </strong>
+                    </article>
+
+                    <article>
+                        <span>
+                            Informativos
+                        </span>
+
+                        <strong>
+                            {{ evidence_report.info }}
+                        </strong>
+                    </article>
+                </div>
+
+                <div class="evidence-dashboard__actions">
+                    <a
+                        class="btn btn-primary"
+                        href="/batches/{{ batch.id }}/comparisons"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Abrir diagnóstico comparativo
+                    </a>
+                </div>
+
             </div>
         {% else %}
             <div class="evidence-empty-state">
                 <strong>
-                    Nenhuma evidência comparativa encontrada
+                    Nenhum apontamento comparativo encontrado
                 </strong>
 
                 <p>
@@ -385,6 +334,8 @@
                                 <a
                                     class="btn btn-secondary"
                                     href="{{ document.analysis_url }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                 >
                                     Abrir análise
                                 </a>

@@ -27,6 +27,9 @@ from app.frontend.view_models.evidence_report_view_builder import (
     EvidenceReportViewBuilder,
 )
 
+from app.frontend.view_models.comparison_view_builder import (
+    ComparisonViewBuilder,
+)
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -70,6 +73,7 @@ batch_view_builder = BatchViewBuilder()
 
 batch_cross_validation_service = BatchCrossValidationService()
 evidence_report_view_builder = EvidenceReportViewBuilder()
+comparison_view_builder = ComparisonViewBuilder()
 
 
 # Rotas da API
@@ -225,5 +229,41 @@ def batch_result(
             "project_slogan": settings.PROJECT_SLOGAN,
             "batch": batch_view,
             "evidence_report": evidence_report_view,
+        },
+    )
+
+@app.get("/batches/{batch_id}/comparisons")
+def batch_comparisons(
+    request: Request,
+    batch_id: UUID,
+):
+    batch = batch_repository.get_by_id(batch_id)
+
+    if batch is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Lote não encontrado.",
+        )
+
+    batch_view = batch_view_builder.build(batch)
+
+    evidence_report = (
+        batch_cross_validation_service.build_evidence_report(
+            batch
+        )
+    )
+
+    comparison_view = comparison_view_builder.build(
+        report=evidence_report,
+        batch_view=batch_view,
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="pages/batch_comparison.html",
+        context={
+            "project_name": settings.PROJECT_NAME,
+            "project_slogan": settings.PROJECT_SLOGAN,
+            "comparison": comparison_view,
         },
     )

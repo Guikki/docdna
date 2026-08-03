@@ -3,7 +3,7 @@
 {% block styles %}
 <link
     rel="stylesheet"
-    href="{{ url_for('static', path='/css/pages/analysis_result.css') }}"
+    href="{{ url_for('static', path='/css/pages/analysis_result.css') }}?v=20260803-1"
 >
 {% endblock %}
 
@@ -99,6 +99,60 @@
             </p>
         </article>
 
+    </section>
+
+    <!-- Estrutura documental normalizada -->
+    <section class="card normalized-document-section">
+        <div class="normalized-document-section__header">
+            <div>
+                <p class="section-eyebrow">Estrutura documental normalizada</p>
+                <h2 class="section-title">Documento convertido para o domínio do DocDNA</h2>
+                <p class="normalized-document-section__intro">Métricas reais construídas com as caixas posicionais do OCR e as dimensões do PDF.</p>
+            </div>
+            <span class="pipeline-status">Pipeline ativa</span>
+        </div>
+        {% if analysis.has_normalized_document %}
+            <div class="metric-grid">
+                <article class="metric-card"><span>Páginas</span><strong>{{ analysis.normalized_document_page_count }}</strong></article>
+                <article class="metric-card"><span>Trechos textuais</span><strong>{{ analysis.normalized_document_text_span_count }}</strong></article>
+                <article class="metric-card"><span>Palavras</span><strong>{{ analysis.normalized_document_word_count }}</strong></article>
+                <article class="metric-card"><span>Caracteres normalizados</span><strong>{{ analysis.normalized_document_normalized_character_count }}</strong></article>
+                <article class="metric-card"><span>Páginas com texto visível</span><strong>{{ analysis.normalized_document_pages_with_text }}</strong></article>
+                <article class="metric-card"><span>Fonte técnica OCR</span><strong class="metric-card__technical">OCR_UNKNOWN</strong></article>
+            </div>
+            <div class="normalized-page-list">
+                {% for page in analysis.normalized_pages %}
+                    <details class="normalized-page">
+                        <summary><span>Página {{ page.number }}</span><small>{{ page.width }} × {{ page.height }} · {{ page.text_span_count }} trecho(s) · {{ page.word_count }} palavra(s)</small></summary>
+                        <div class="normalized-page__content">
+                            <dl class="normalized-page__metrics">
+                                <div><dt>Área</dt><dd>{{ page.area }}</dd></div>
+                                <div><dt>Proporção</dt><dd>{{ page.aspect_ratio }}</dd></div>
+                                <div><dt>Caracteres</dt><dd>{{ page.character_count }}</dd></div>
+                                <div><dt>Texto visível</dt><dd>{{ "Sim" if page.has_visible_text else "Não" }}</dd></div>
+                            </dl>
+                            {% if page.text_bounding_box %}<div class="normalized-page__region"><strong>Região textual consolidada</strong><span>X: {{ page.text_bounding_box.left }}, Y: {{ page.text_bounding_box.top }}, Largura: {{ page.text_bounding_box.width }}, Altura: {{ page.text_bounding_box.height }}</span></div>{% endif %}
+                            {% if page.sample_spans %}<div class="span-sample-list">{% for span in page.sample_spans %}<article class="span-sample"><strong>{{ span.normalized_text or "(trecho vazio)" }}</strong><span>Fonte: {{ span.font_name }} · Tamanho técnico: {{ span.font_size }}</span><small>X: {{ span.left }}, Y: {{ span.top }}, Largura: {{ span.width }}, Altura: {{ span.height }}</small></article>{% endfor %}</div>{% endif %}
+                        </div>
+                    </details>
+                {% endfor %}
+            </div>
+        {% else %}<p class="summary-card__message">O documento normalizado não foi disponibilizado por esta execução.</p>{% endif %}
+    </section>
+
+    <!-- Fingerprints de imagem -->
+    <section class="card fingerprint-section">
+        <p class="section-eyebrow">Fingerprints de imagem</p>
+        <h2 class="section-title">Identidade técnica das imagens internas</h2>
+        <p class="fingerprint-section__intro">{{ analysis.image_fingerprint_message }}</p>
+        {% if analysis.image_fingerprints %}<div class="fingerprint-list">{% for fingerprint in analysis.image_fingerprints %}
+            <article class="fingerprint-item">
+                <header class="fingerprint-item__header"><div><strong>Fingerprint {{ fingerprint.index }}</strong><span>Página {{ fingerprint.page_number or "não informada" }}</span></div><span class="fingerprint-confidence">Confiança {{ fingerprint.confidence }}</span></header>
+                <p>{{ fingerprint.description }}</p>
+                <dl class="fingerprint-data"><div><dt>Dimensões</dt><dd>{{ fingerprint.width }} × {{ fingerprint.height }}</dd></div><div><dt>Tipo MIME</dt><dd>{{ fingerprint.mime_type }}</dd></div><div><dt>DPI</dt><dd>{{ fingerprint.dpi or "Não informado" }}</dd></div>{% if fingerprint.location %}<div><dt>Região técnica</dt><dd>X: {{ fingerprint.location.x }}, Y: {{ fingerprint.location.y }}, Largura: {{ fingerprint.location.width }}, Altura: {{ fingerprint.location.height }}</dd></div>{% endif %}</dl>
+                <details class="fingerprint-hashes"><summary>Exibir hashes técnicos</summary><dl><div><dt>SHA-256</dt><dd>{{ fingerprint.image_hash or "Não disponível" }}</dd></div><div><dt>Perceptual hash</dt><dd>{{ fingerprint.perceptual_hash or "Não disponível" }}</dd></div><div><dt>Average hash</dt><dd>{{ fingerprint.average_hash or "Não disponível" }}</dd></div><div><dt>Difference hash</dt><dd>{{ fingerprint.difference_hash or "Não disponível" }}</dd></div></dl></details>
+            </article>
+        {% endfor %}</div>{% endif %}
     </section>
 
     <!-- Segunda linha: evidências, códigos e sequências -->
