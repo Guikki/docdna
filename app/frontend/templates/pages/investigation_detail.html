@@ -1,0 +1,1956 @@
+{% extends "base.html" %}
+
+{% block styles %}
+<link
+    rel="stylesheet"
+    href="{{ url_for('static', path='/css/pages/analysis_result.css') }}?v=20260805-1"
+>
+
+<link
+    rel="stylesheet"
+    href="{{ url_for('static', path='/css/pages/investigation_detail.css') }}?v=20260805-2"
+>
+{% endblock %}
+
+{% block content %}
+<main class="investigation-page">
+
+    <section class="investigation-header card">
+
+        <div class="investigation-header__content">
+
+            <a
+                class="investigation-back"
+                href="{{ back_url }}"
+            >
+                ← Voltar ao panorama da análise
+            </a>
+
+            <p class="section-eyebrow">
+                Investigação detalhada
+            </p>
+
+            <h1 class="investigation-header__title">
+                {{ investigation.title }}
+            </h1>
+
+            <p class="investigation-header__summary">
+                {{ investigation.summary }}
+            </p>
+
+        </div>
+
+        <span
+            class="
+                investigation-status
+                investigation-status--{{ investigation.status }}
+            "
+        >
+            {{ investigation.status_label }}
+        </span>
+
+    </section>
+
+    <section class="investigation-executive card">
+
+        <div class="investigation-section-heading">
+
+            <div>
+                <p class="section-eyebrow">
+                    Resumo executivo
+                </p>
+
+                <h2 class="section-title">
+                    Conclusão da etapa
+                </h2>
+            </div>
+
+        </div>
+
+        <div class="investigation-conclusion">
+
+            <span
+                class="
+                    investigation-conclusion__indicator
+                    investigation-conclusion__indicator--{{ investigation.status }}
+                "
+                aria-hidden="true"
+            ></span>
+
+            <div>
+                <strong>
+                    {{ investigation.status_label }}
+                </strong>
+
+                <p>
+                    {{ investigation.summary }}
+                </p>
+            </div>
+
+        </div>
+
+        <p class="investigation-scope-note">
+            A conclusão apresentada considera somente os verificadores
+            executados nesta etapa. Ela não representa declaração de
+            autenticidade, inexistência de fraude ou decisão pericial.
+        </p>
+
+    </section>
+
+    <section class="investigation-metric-grid">
+
+        {% for metric in investigation.metrics %}
+
+            <article class="card investigation-metric-card">
+
+                <span class="investigation-metric-card__label">
+                    {{ metric.label }}
+                </span>
+
+                <strong class="investigation-metric-card__value">
+                    {{ metric.value }}
+                </strong>
+
+            </article>
+
+        {% endfor %}
+
+        <article class="card investigation-metric-card">
+
+            <span class="investigation-metric-card__label">
+                Evidências relacionadas
+            </span>
+
+            <strong class="investigation-metric-card__value">
+                {{ investigation.evidence_count }}
+            </strong>
+
+        </article>
+
+    </section>
+
+    {% if slug == "identity" %}
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Objetos e dados produzidos
+                    </p>
+
+                    <h2 class="section-title">
+                        Identificação técnica do arquivo
+                    </h2>
+                </div>
+
+            </div>
+
+            <div class="produced-object-grid">
+
+                <article class="produced-object">
+                    <strong>
+                        Identidade do arquivo
+                    </strong>
+
+                    <span>
+                        Nome, tamanho, extensão e data de envio.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        Hash criptográfico
+                    </strong>
+
+                    <span>
+                        SHA-256 calculado para controle de integridade.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        Metadados do PDF
+                    </strong>
+
+                    <span>
+                        Criador, produtor, título, autor e datas técnicas.
+                    </span>
+                </article>
+
+            </div>
+
+        </section>
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Resultados
+                    </p>
+
+                    <h2 class="section-title">
+                        Informações identificadas
+                    </h2>
+                </div>
+
+            </div>
+
+            <dl class="investigation-data-table">
+
+                <div>
+                    <dt>
+                        Nome original
+                    </dt>
+
+                    <dd>
+                        {{ analysis.filename }}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        Tamanho
+                    </dt>
+
+                    <dd>
+                        {{ analysis.formatted_size }}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        Data de envio
+                    </dt>
+
+                    <dd>
+                        {{ analysis.uploaded_at }}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        Quantidade de páginas
+                    </dt>
+
+                    <dd>
+                        {{ analysis.page_count }}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        SHA-256
+                    </dt>
+
+                    <dd class="investigation-break-value">
+                        {{ analysis.sha256 }}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        Título do PDF
+                    </dt>
+
+                    <dd>
+                        {{ analysis.pdf_title }}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        Autor
+                    </dt>
+
+                    <dd>
+                        {{ analysis.pdf_author }}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        Criador
+                    </dt>
+
+                    <dd>
+                        {{ analysis.pdf_creator }}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        Produtor
+                    </dt>
+
+                    <dd>
+                        {{ analysis.pdf_producer }}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        Data de criação
+                    </dt>
+
+                    <dd>
+                        {{ analysis.pdf_creation_date }}
+
+                        <small class="investigation-raw-value">
+                            Valor original:
+                            {{ analysis.pdf_creation_date_raw }}
+                        </small>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        Data de modificação
+                    </dt>
+
+                    <dd>
+                        {{ analysis.pdf_modification_date }}
+
+                        <small class="investigation-raw-value">
+                            Valor original:
+                            {{ analysis.pdf_modification_date_raw }}
+                        </small>
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        Versão do PDF
+                    </dt>
+
+                    <dd>
+                        {{ analysis.pdf_version }}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        Possui texto nativo
+                    </dt>
+
+                    <dd>
+                        {{
+                            "Sim"
+                            if analysis.has_native_text
+                            else "Não"
+                        }}
+                    </dd>
+                </div>
+
+                <div>
+                    <dt>
+                        Possui imagens
+                    </dt>
+
+                    <dd>
+                        {{
+                            "Sim"
+                            if analysis.has_images
+                            else "Não"
+                        }}
+                    </dd>
+                </div>
+
+            </dl>
+
+        </section>
+
+    {% elif slug == "structure" %}
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Objetos produzidos
+                    </p>
+
+                    <h2 class="section-title">
+                        Estrutura documental normalizada
+                    </h2>
+                </div>
+
+            </div>
+
+            <div class="produced-object-grid">
+
+                <article class="produced-object">
+                    <strong>
+                        Document
+                    </strong>
+
+                    <span>
+                        Raiz imutável da representação documental.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        Page
+                    </strong>
+
+                    <span>
+                        Páginas com dimensões e conteúdo posicional.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        TextSpan
+                    </strong>
+
+                    <span>
+                        Trechos de texto normalizados e posicionados.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        BoundingBox
+                    </strong>
+
+                    <span>
+                        Região geométrica de cada trecho textual.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        Font
+                    </strong>
+
+                    <span>
+                        Representação técnica da fonte observada.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        OCRTextSpanAdapter
+                    </strong>
+
+                    <span>
+                        Conversão do OCR antigo para o novo domínio.
+                    </span>
+                </article>
+
+            </div>
+
+        </section>
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Resultados
+                    </p>
+
+                    <h2 class="section-title">
+                        Métricas estruturais
+                    </h2>
+                </div>
+
+            </div>
+
+            {% if analysis.has_normalized_document %}
+
+                <dl class="investigation-data-table">
+
+                    <div>
+                        <dt>
+                            Páginas normalizadas
+                        </dt>
+
+                        <dd>
+                            {{
+                                analysis
+                                .normalized_document_page_count
+                            }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Trechos textuais
+                        </dt>
+
+                        <dd>
+                            {{
+                                analysis
+                                .normalized_document_text_span_count
+                            }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Palavras
+                        </dt>
+
+                        <dd>
+                            {{
+                                analysis
+                                .normalized_document_word_count
+                            }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Caracteres originais
+                        </dt>
+
+                        <dd>
+                            {{
+                                analysis
+                                .normalized_document_character_count
+                            }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Caracteres normalizados
+                        </dt>
+
+                        <dd>
+                            {{
+                                analysis
+                                .normalized_document_normalized_character_count
+                            }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Páginas com texto visível
+                        </dt>
+
+                        <dd>
+                            {{
+                                analysis
+                                .normalized_document_pages_with_text
+                            }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Fonte técnica OCR
+                        </dt>
+
+                        <dd>
+                            OCR_UNKNOWN
+                        </dd>
+                    </div>
+
+                </dl>
+
+            {% else %}
+
+                <div class="investigation-empty-state">
+
+                    <strong>
+                        Estrutura não disponível
+                    </strong>
+
+                    <p>
+                        O documento normalizado não foi disponibilizado
+                        nesta execução.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </section>
+
+        {% if analysis.normalized_pages %}
+
+            <section class="card investigation-section">
+
+                <div class="investigation-section-heading">
+
+                    <div>
+                        <p class="section-eyebrow">
+                            Dados técnicos
+                        </p>
+
+                        <h2 class="section-title">
+                            Páginas e trechos posicionais
+                        </h2>
+                    </div>
+
+                </div>
+
+                <div class="investigation-detail-list">
+
+                    {% for page in analysis.normalized_pages %}
+
+                        <details class="investigation-detail-item">
+
+                            <summary>
+
+                                <span>
+                                    Página {{ page.number }}
+                                </span>
+
+                                <small>
+                                    {{ page.width }}
+                                    ×
+                                    {{ page.height }}
+                                    ·
+                                    {{ page.text_span_count }}
+                                    trecho(s)
+                                    ·
+                                    {{ page.word_count }}
+                                    palavra(s)
+                                </small>
+
+                            </summary>
+
+                            <div class="investigation-detail-item__content">
+
+                                <dl
+                                    class="
+                                        investigation-data-table
+                                        investigation-data-table--compact
+                                    "
+                                >
+
+                                    <div>
+                                        <dt>
+                                            Área
+                                        </dt>
+
+                                        <dd>
+                                            {{ page.area }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Proporção
+                                        </dt>
+
+                                        <dd>
+                                            {{ page.aspect_ratio }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Caracteres
+                                        </dt>
+
+                                        <dd>
+                                            {{ page.character_count }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Texto visível
+                                        </dt>
+
+                                        <dd>
+                                            {{
+                                                "Sim"
+                                                if page.has_visible_text
+                                                else "Não"
+                                            }}
+                                        </dd>
+                                    </div>
+
+                                </dl>
+
+                                {% if page.text_bounding_box %}
+
+                                    <div class="investigation-technical-note">
+
+                                        <strong>
+                                            Região textual consolidada
+                                        </strong>
+
+                                        <span>
+                                            X:
+                                            {{ page.text_bounding_box.left }},
+                                            Y:
+                                            {{ page.text_bounding_box.top }},
+                                            largura:
+                                            {{ page.text_bounding_box.width }},
+                                            altura:
+                                            {{ page.text_bounding_box.height }}
+                                        </span>
+
+                                    </div>
+
+                                {% endif %}
+
+                                {% if page.sample_spans %}
+
+                                    <div class="investigation-span-grid">
+
+                                        {% for span in page.sample_spans %}
+
+                                            <article class="investigation-span">
+
+                                                <strong>
+                                                    {{
+                                                        span.normalized_text
+                                                        or "(trecho vazio)"
+                                                    }}
+                                                </strong>
+
+                                                <span>
+                                                    Fonte:
+                                                    {{ span.font_name }}
+                                                    ·
+                                                    tamanho técnico:
+                                                    {{ span.font_size }}
+                                                </span>
+
+                                                <small>
+                                                    X: {{ span.left }},
+                                                    Y: {{ span.top }},
+                                                    largura:
+                                                    {{ span.width }},
+                                                    altura:
+                                                    {{ span.height }}
+                                                </small>
+
+                                            </article>
+
+                                        {% endfor %}
+
+                                    </div>
+
+                                {% endif %}
+
+                            </div>
+
+                        </details>
+
+                    {% endfor %}
+
+                </div>
+
+            </section>
+
+        {% endif %}
+
+    {% elif slug == "content" %}
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Objetos e fontes
+                    </p>
+
+                    <h2 class="section-title">
+                        Camadas de conteúdo analisadas
+                    </h2>
+                </div>
+
+            </div>
+
+            <div class="produced-object-grid">
+
+                <article class="produced-object">
+                    <strong>
+                        Texto nativo
+                    </strong>
+
+                    <span>
+                        Conteúdo extraído diretamente da camada do PDF.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        OCR
+                    </strong>
+
+                    <span>
+                        Conteúdo reconhecido visualmente nas páginas.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        Texto normalizado
+                    </strong>
+
+                    <span>
+                        Conteúdo consolidado pelo domínio documental.
+                    </span>
+                </article>
+
+            </div>
+
+        </section>
+
+        <section class="investigation-two-column">
+
+            <article class="card investigation-section">
+
+                <div class="investigation-section-heading">
+
+                    <div>
+                        <p class="section-eyebrow">
+                            Texto nativo
+                        </p>
+
+                        <h2 class="section-title">
+                            Conteúdo da camada textual
+                        </h2>
+                    </div>
+
+                </div>
+
+                <dl class="investigation-data-table">
+
+                    <div>
+                        <dt>
+                            Caracteres
+                        </dt>
+
+                        <dd>
+                            {{
+                                analysis
+                                .native_text_character_count
+                            }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Páginas com texto
+                        </dt>
+
+                        <dd>
+                            {{ analysis.native_text_pages }}
+                        </dd>
+                    </div>
+
+                </dl>
+
+                <pre class="investigation-text-content">{{ analysis.native_text_content or "Nenhum texto nativo extraído." }}</pre>
+
+            </article>
+
+            <article class="card investigation-section">
+
+                <div class="investigation-section-heading">
+
+                    <div>
+                        <p class="section-eyebrow">
+                            OCR
+                        </p>
+
+                        <h2 class="section-title">
+                            Conteúdo reconhecido visualmente
+                        </h2>
+                    </div>
+
+                </div>
+
+                <dl class="investigation-data-table">
+
+                    <div>
+                        <dt>
+                            Idioma
+                        </dt>
+
+                        <dd>
+                            {{ analysis.ocr_language }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Páginas processadas
+                        </dt>
+
+                        <dd>
+                            {{ analysis.ocr_pages_processed }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Páginas com texto
+                        </dt>
+
+                        <dd>
+                            {{ analysis.ocr_pages_with_text }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Caracteres
+                        </dt>
+
+                        <dd>
+                            {{ analysis.ocr_character_count }}
+                        </dd>
+                    </div>
+
+                </dl>
+
+                <pre class="investigation-text-content">{{ analysis.ocr_content or "Nenhum texto identificado pelo OCR." }}</pre>
+
+            </article>
+
+        </section>
+
+        {% if analysis.normalized_document_text %}
+
+            <section class="card investigation-section">
+
+                <div class="investigation-section-heading">
+
+                    <div>
+                        <p class="section-eyebrow">
+                            Conteúdo normalizado
+                        </p>
+
+                        <h2 class="section-title">
+                            Texto consolidado pelo domínio documental
+                        </h2>
+                    </div>
+
+                </div>
+
+                <pre class="investigation-text-content">{{ analysis.normalized_document_text }}</pre>
+
+            </section>
+
+        {% endif %}
+
+    {% elif slug == "visual" %}
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Objetos produzidos
+                    </p>
+
+                    <h2 class="section-title">
+                        Elementos visuais analisados
+                    </h2>
+                </div>
+
+            </div>
+
+            <div class="produced-object-grid">
+
+                <article class="produced-object">
+                    <strong>
+                        Imagens internas
+                    </strong>
+
+                    <span>
+                        Recursos gráficos extraídos diretamente do PDF.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        ImageFingerprint
+                    </strong>
+
+                    <span>
+                        Identidade técnica e perceptual de cada imagem.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        Hashes visuais
+                    </strong>
+
+                    <span>
+                        SHA-256, pHash, aHash e dHash.
+                    </span>
+                </article>
+
+            </div>
+
+            <div class="investigation-capability-note">
+
+                <strong>
+                    Escopo atual
+                </strong>
+
+                <p>
+                    Esta investigação apresenta imagens e fingerprints
+                    produzidos. A análise individual ainda não classifica
+                    automaticamente logos, assinaturas, QR Codes ou
+                    duplicidades entre documentos.
+                </p>
+
+            </div>
+
+        </section>
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Resultados
+                    </p>
+
+                    <h2 class="section-title">
+                        Imagens internas extraídas
+                    </h2>
+                </div>
+
+            </div>
+
+            {% if analysis.images %}
+
+                <div class="investigation-static-list">
+
+                    {% for image in analysis.images %}
+
+                        <article class="investigation-static-item">
+
+                            <strong>
+                                {{ image.filename }}
+                            </strong>
+
+                            <span>
+                                {{ image.width }}
+                                ×
+                                {{ image.height }}
+                                ·
+                                {{ image.extension }}
+                                ·
+                                {{ image.size_bytes }}
+                                bytes
+                            </span>
+
+                        </article>
+
+                    {% endfor %}
+
+                </div>
+
+            {% else %}
+
+                <div class="investigation-empty-state">
+
+                    <strong>
+                        Nenhuma imagem interna extraída
+                    </strong>
+
+                    <p>
+                        O leitor não produziu imagens internas para
+                        esta execução.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </section>
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Dados técnicos
+                    </p>
+
+                    <h2 class="section-title">
+                        Fingerprints de imagem
+                    </h2>
+                </div>
+
+            </div>
+
+            {% if analysis.image_fingerprints %}
+
+                <div class="investigation-fingerprint-grid">
+
+                    {% for fingerprint in analysis.image_fingerprints %}
+
+                        <article class="investigation-fingerprint">
+
+                            <header class="investigation-fingerprint__header">
+
+                                <div>
+                                    <strong>
+                                        Fingerprint
+                                        {{ fingerprint.index }}
+                                    </strong>
+
+                                    <span>
+                                        Página
+                                        {{
+                                            fingerprint.page_number
+                                            or "não informada"
+                                        }}
+                                    </span>
+                                </div>
+
+                                <span class="investigation-fingerprint__confidence">
+                                    Confiança
+                                    {{ fingerprint.confidence }}
+                                </span>
+
+                            </header>
+
+                            <p>
+                                {{ fingerprint.description }}
+                            </p>
+
+                            <dl
+                                class="
+                                    investigation-data-table
+                                    investigation-data-table--compact
+                                "
+                            >
+
+                                <div>
+                                    <dt>
+                                        Dimensões
+                                    </dt>
+
+                                    <dd>
+                                        {{ fingerprint.width }}
+                                        ×
+                                        {{ fingerprint.height }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt>
+                                        MIME type
+                                    </dt>
+
+                                    <dd>
+                                        {{ fingerprint.mime_type }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt>
+                                        DPI
+                                    </dt>
+
+                                    <dd>
+                                        {{
+                                            fingerprint.dpi
+                                            or "Não informado"
+                                        }}
+                                    </dd>
+                                </div>
+
+                                {% if fingerprint.location %}
+
+                                    <div>
+                                        <dt>
+                                            Região técnica
+                                        </dt>
+
+                                        <dd>
+                                            X:
+                                            {{ fingerprint.location.x }},
+                                            Y:
+                                            {{ fingerprint.location.y }},
+                                            largura:
+                                            {{ fingerprint.location.width }},
+                                            altura:
+                                            {{ fingerprint.location.height }}
+                                        </dd>
+                                    </div>
+
+                                {% endif %}
+
+                            </dl>
+
+                            <details class="investigation-hash-details">
+
+                                <summary>
+                                    Exibir hashes técnicos
+                                </summary>
+
+                                <dl class="investigation-hash-list">
+
+                                    <div>
+                                        <dt>
+                                            SHA-256
+                                        </dt>
+
+                                        <dd>
+                                            {{
+                                                fingerprint.image_hash
+                                                or "Não disponível"
+                                            }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Perceptual hash
+                                        </dt>
+
+                                        <dd>
+                                            {{
+                                                fingerprint.perceptual_hash
+                                                or "Não disponível"
+                                            }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Average hash
+                                        </dt>
+
+                                        <dd>
+                                            {{
+                                                fingerprint.average_hash
+                                                or "Não disponível"
+                                            }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Difference hash
+                                        </dt>
+
+                                        <dd>
+                                            {{
+                                                fingerprint.difference_hash
+                                                or "Não disponível"
+                                            }}
+                                        </dd>
+                                    </div>
+
+                                </dl>
+
+                            </details>
+
+                        </article>
+
+                    {% endfor %}
+
+                </div>
+
+            {% else %}
+
+                <div class="investigation-empty-state">
+
+                    <strong>
+                        Nenhum fingerprint disponível
+                    </strong>
+
+                    <p>
+                        Nenhuma identidade técnica de imagem foi
+                        produzida nesta execução.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </section>
+
+    {% elif slug == "financial" %}
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Objetos e verificadores
+                    </p>
+
+                    <h2 class="section-title">
+                        Elementos financeiros analisados
+                    </h2>
+                </div>
+
+            </div>
+
+            <div class="produced-object-grid">
+
+                <article class="produced-object">
+                    <strong>
+                        Código de barras
+                    </strong>
+
+                    <span>
+                        Leitura automática dos códigos localizados.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        Linha digitável
+                    </strong>
+
+                    <span>
+                        Sequências numéricas detectadas no documento.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        Validação estrutural
+                    </strong>
+
+                    <span>
+                        Verificação de formato e dígitos verificadores.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        Comparação cruzada
+                    </strong>
+
+                    <span>
+                        Comparação entre código e linha digitável.
+                    </span>
+                </article>
+
+                <article class="produced-object">
+                    <strong>
+                        Evidência visual
+                    </strong>
+
+                    <span>
+                        Localização posicional da sequência analisada.
+                    </span>
+                </article>
+
+            </div>
+
+        </section>
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Resultados
+                    </p>
+
+                    <h2 class="section-title">
+                        Códigos lidos no documento
+                    </h2>
+                </div>
+
+            </div>
+
+            {% if analysis.barcodes %}
+
+                <div class="investigation-static-list">
+
+                    {% for barcode in analysis.barcodes %}
+
+                        <article class="investigation-static-item">
+
+                            <strong class="investigation-break-value">
+                                {{ barcode.content }}
+                            </strong>
+
+                            <span>
+                                Página
+                                {{ barcode.page_number }}
+                                ·
+                                formato:
+                                {{ barcode.format }}
+                            </span>
+
+                        </article>
+
+                    {% endfor %}
+
+                </div>
+
+            {% else %}
+
+                <div class="investigation-empty-state">
+
+                    <strong>
+                        Nenhum código lido
+                    </strong>
+
+                    <p>
+                        Nenhum código de barras ou QR Code foi
+                        decodificado nesta execução.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </section>
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Validação
+                    </p>
+
+                    <h2 class="section-title">
+                        Sequências numéricas detectadas
+                    </h2>
+                </div>
+
+            </div>
+
+            {% if analysis.numeric_line_validations %}
+
+                <div class="investigation-validation-list">
+
+                    {% for validation in analysis.numeric_line_validations %}
+
+                        <article
+                            class="
+                                investigation-validation
+                                investigation-validation--{{ validation.status }}
+                            "
+                        >
+
+                            <header class="investigation-validation__header">
+
+                                <strong>
+                                    Sequência
+                                    {{ validation.line_index }}
+                                </strong>
+
+                                <span>
+                                    {{ validation.status_label }}
+                                </span>
+
+                            </header>
+
+                            <p class="investigation-validation__number">
+                                {{ validation.normalized_content }}
+                            </p>
+
+                            <dl
+                                class="
+                                    investigation-data-table
+                                    investigation-data-table--compact
+                                "
+                            >
+
+                                <div>
+                                    <dt>
+                                        Tipo provável
+                                    </dt>
+
+                                    <dd>
+                                        {{ validation.line_type_label }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt>
+                                        Método
+                                    </dt>
+
+                                    <dd>
+                                        {{
+                                            validation
+                                            .validation_method_label
+                                        }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt>
+                                        Dígitos verificadores válidos
+                                    </dt>
+
+                                    <dd>
+                                        {{
+                                            validation
+                                            .valid_check_digits
+                                        }}
+                                        de
+                                        {{
+                                            validation
+                                            .total_check_digits
+                                        }}
+                                    </dd>
+                                </div>
+
+                            </dl>
+
+                            <p class="investigation-validation__message">
+                                {{ validation.message }}
+                            </p>
+
+                        </article>
+
+                    {% endfor %}
+
+                </div>
+
+            {% else %}
+
+                <div class="investigation-empty-state">
+
+                    <strong>
+                        Nenhuma sequência validada
+                    </strong>
+
+                    <p>
+                        Não foram disponibilizadas sequências
+                        numéricas para validação estrutural.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </section>
+
+        {% if analysis.barcode_line_comparisons %}
+
+            <section class="card investigation-section">
+
+                <div class="investigation-section-heading">
+
+                    <div>
+                        <p class="section-eyebrow">
+                            Comparação
+                        </p>
+
+                        <h2 class="section-title">
+                            Código de barras e linha digitável
+                        </h2>
+                    </div>
+
+                </div>
+
+                <div class="investigation-static-list">
+
+                    {% for comparison in analysis.barcode_line_comparisons %}
+
+                        <article class="investigation-static-item">
+
+                            <strong>
+                                Sequência
+                                {{ comparison.line_index }}
+                                ·
+                                {{ comparison.status_label }}
+                            </strong>
+
+                            <span>
+                                {{ comparison.message }}
+                            </span>
+
+                            <small class="investigation-break-value">
+                                Linha:
+                                {{ comparison.printed_numeric_line }}
+                            </small>
+
+                            <small class="investigation-break-value">
+                                Código convertido:
+                                {{ comparison.converted_barcode }}
+                            </small>
+
+                        </article>
+
+                    {% endfor %}
+
+                </div>
+
+            </section>
+
+        {% endif %}
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Evidência visual
+                    </p>
+
+                    <h2 class="section-title">
+                        Localização das sequências
+                    </h2>
+                </div>
+
+            </div>
+
+            {% if analysis.numeric_line_locations %}
+
+                <div class="investigation-location-list">
+
+                    {% for location in analysis.numeric_line_locations %}
+
+                        <article
+                            class="
+                                investigation-location
+                                {% if location.located %}
+                                    investigation-location--located
+                                {% else %}
+                                    investigation-location--unlocated
+                                {% endif %}
+                            "
+                        >
+
+                            <header class="investigation-location__header">
+
+                                <strong>
+                                    Sequência
+                                    {{ location.line_index }}
+                                </strong>
+
+                                <span>
+                                    {{
+                                        "Localizada"
+                                        if location.located
+                                        else "Não localizada"
+                                    }}
+                                </span>
+
+                            </header>
+
+                            <p>
+                                {{ location.message }}
+                            </p>
+
+                            {% if location.located %}
+
+                                <dl
+                                    class="
+                                        investigation-data-table
+                                        investigation-data-table--compact
+                                    "
+                                >
+
+                                    <div>
+                                        <dt>
+                                            Página
+                                        </dt>
+
+                                        <dd>
+                                            {{ location.page_number }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Confiança OCR
+                                        </dt>
+
+                                        <dd>
+                                            {{
+                                                location
+                                                .confidence_label
+                                            }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Coordenadas
+                                        </dt>
+
+                                        <dd>
+                                            X:
+                                            {{ location.left }},
+                                            Y:
+                                            {{ location.top }},
+                                            largura:
+                                            {{ location.width }},
+                                            altura:
+                                            {{ location.height }}
+                                        </dd>
+                                    </div>
+
+                                </dl>
+
+                                <div class="investigation-location__actions">
+
+                                    {% if location.annotated_image_url %}
+
+                                        <a
+                                            class="btn btn-secondary"
+                                            href="{{ location.annotated_image_url }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            Abrir imagem anotada
+                                        </a>
+
+                                    {% endif %}
+
+                                    {% if location.source_image_url %}
+
+                                        <a
+                                            class="btn btn-secondary"
+                                            href="{{ location.source_image_url }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            Abrir página original
+                                        </a>
+
+                                    {% endif %}
+
+                                </div>
+
+                            {% endif %}
+
+                        </article>
+
+                    {% endfor %}
+
+                </div>
+
+            {% else %}
+
+                <div class="investigation-empty-state">
+
+                    <strong>
+                        Nenhuma localização disponível
+                    </strong>
+
+                    <p>
+                        Nenhuma sequência foi disponibilizada para
+                        localização visual.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </section>
+
+    {% elif slug == "evidence" %}
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Síntese
+                    </p>
+
+                    <h2 class="section-title">
+                        Evidências registradas pelos detectores
+                    </h2>
+                </div>
+
+            </div>
+
+            <div class="investigation-capability-note">
+
+                <strong>
+                    Interpretação correta
+                </strong>
+
+                <p>
+                    Evidências são observações técnicas produzidas
+                    por detectores. Uma evidência informativa não
+                    representa necessariamente risco, e a ausência
+                    de evidências não comprova autenticidade.
+                </p>
+
+            </div>
+
+        </section>
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Resultados
+                    </p>
+
+                    <h2 class="section-title">
+                        Lista completa de evidências
+                    </h2>
+                </div>
+
+            </div>
+
+            {% if analysis.evidences %}
+
+                <div class="investigation-evidence-list">
+
+                    {% for evidence in analysis.evidences %}
+
+                        <article
+                            class="
+                                investigation-evidence
+                                investigation-evidence--{{ evidence.severity }}
+                            "
+                        >
+
+                            <header class="investigation-evidence__header">
+
+                                <strong>
+                                    {{ evidence.title }}
+                                </strong>
+
+                                <span>
+                                    {{ evidence.severity }}
+                                </span>
+
+                            </header>
+
+                            <p>
+                                {{ evidence.description }}
+                            </p>
+
+                            <dl
+                                class="
+                                    investigation-data-table
+                                    investigation-data-table--compact
+                                "
+                            >
+
+                                <div>
+                                    <dt>
+                                        Código
+                                    </dt>
+
+                                    <dd>
+                                        {{ evidence.code }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt>
+                                        Detector
+                                    </dt>
+
+                                    <dd>
+                                        {{ evidence.detector }}
+                                    </dd>
+                                </div>
+
+                                <div>
+                                    <dt>
+                                        Confiança
+                                    </dt>
+
+                                    <dd>
+                                        {{
+                                            "%.0f"
+                                            |format(
+                                                evidence.confidence
+                                                * 100
+                                            )
+                                        }}%
+                                    </dd>
+                                </div>
+
+                            </dl>
+
+                        </article>
+
+                    {% endfor %}
+
+                </div>
+
+            {% else %}
+
+                <div class="investigation-empty-state">
+
+                    <strong>
+                        Nenhuma evidência registrada
+                    </strong>
+
+                    <p>
+                        Nenhum detector executado produziu evidência
+                        técnica para esta análise.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </section>
+
+    {% else %}
+
+        <section class="card investigation-section">
+
+            <div class="investigation-empty-state">
+
+                <strong>
+                    Investigação não disponível
+                </strong>
+
+                <p>
+                    O agrupamento solicitado não possui conteúdo
+                    configurado para apresentação.
+                </p>
+
+            </div>
+
+        </section>
+
+    {% endif %}
+
+    <section class="card investigation-footer-note">
+
+        <strong>
+            Apoio à decisão
+        </strong>
+
+        <p>
+            O DocDNA organiza fatos técnicos, evidências e resultados
+            automatizados para auxiliar a revisão humana. A conclusão
+            definitiva deve considerar o contexto documental, os demais
+            documentos do processo e a avaliação do analista responsável.
+        </p>
+
+        <a
+            class="btn btn-secondary"
+            href="{{ back_url }}"
+        >
+            Voltar ao panorama da análise
+        </a>
+
+    </section>
+
+</main>
+{% endblock %}

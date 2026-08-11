@@ -1,15 +1,13 @@
-from app.domain.prompt_injection.models.prompt_injection_assessment import (
-    PromptInjectionAssessment,
+from app.domain.prompt_injection.services.prompt_injection_assessment_builder import (
+    PromptInjectionAssessmentBuilder,
 )
-from app.domain.prompt_injection.models.prompt_injection_evidence import (
-    PromptInjectionEvidence,
-)
-from app.domain.prompt_injection.models.prompt_injection_risk_level import (
-    PromptInjectionRiskLevel,
+from app.domain.prompt_injection.services.prompt_phrase_catalog import (
+    PromptPhraseCatalog,
+    PromptPhraseRule,
 )
 
 __all__ = [
-    "PromptInjectionAssessment",
-    "PromptInjectionEvidence",
-    "PromptInjectionRiskLevel",
+    "PromptInjectionAssessmentBuilder",
+    "PromptPhraseCatalog",
+    "PromptPhraseRule",
 ]
