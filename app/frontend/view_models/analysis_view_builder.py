@@ -959,21 +959,28 @@ class AnalysisViewBuilder:
         )
 
     def _translate_source(
-        self,
-        source: str,
+            self,
+            source: str,
     ) -> str:
-        if source == "ocr":
-            return "OCR"
-
-        if source == "native_text":
-            return "Texto nativo"
-
-        if source == "normalized_document":
-            return (
+        labels = {
+            "ocr": (
+                "OCR"
+            ),
+            "native_text": (
+                "Texto nativo"
+            ),
+            "normalized_document": (
                 "Documento normalizado"
-            )
+            ),
+            "normalized_document_visual": (
+                "Análise tipográfica"
+            ),
+        }
 
-        return source
+        return labels.get(
+            source,
+            source,
+        )
 
     def _build_native_text_message(
         self,
@@ -1869,6 +1876,52 @@ class AnalysisViewBuilder:
                             "Não informada"
                         )
                     ),
+
+                    "font_size": (
+                        metadata.get(
+                            "font_size"
+                        )
+                    ),
+
+                    "font_name": (
+                        metadata.get(
+                            "font_name"
+                        )
+                    ),
+
+                    "font_color": (
+                        metadata.get(
+                            "font_color"
+                        )
+                    ),
+
+                    "maximum_font_size": (
+                        metadata.get(
+                            "maximum_font_size"
+                        )
+                    ),
+
+                    "analysis_method": (
+                        metadata.get(
+                            "analysis_method"
+                        )
+                    ),
+
+                    "signal_groups": (
+                        list(
+                            metadata.get(
+                                "signal_groups",
+                                (),
+                            )
+                        )
+                    ),
+
+                    "matched_signals": (
+                        metadata.get(
+                            "matched_signals",
+                            {},
+                        )
+                    ),
                 }
             )
 
@@ -1968,8 +2021,8 @@ class AnalysisViewBuilder:
         )
 
     def _translate_prompt_injection_category(
-        self,
-        category: str | None,
+            self,
+            category: str | None,
     ) -> str:
         if category is None:
             return (
@@ -2004,6 +2057,14 @@ class AnalysisViewBuilder:
 
             "prompt_structure": (
                 "Estrutura semelhante a prompt"
+            ),
+
+            "instruction_intent": (
+                "Instrução direcionada a sistema de IA"
+            ),
+
+            "visual_concealment": (
+                "Possível ocultação tipográfica"
             ),
         }
 

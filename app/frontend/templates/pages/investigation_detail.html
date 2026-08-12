@@ -1759,6 +1759,1221 @@
 
         </section>
 
+        {% elif slug == "ai-security" %}
+
+        {# ============================================================
+           IA E SEGURANÇA — VISÃO GERAL DA INVESTIGAÇÃO
+           ============================================================ #}
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+
+                <div>
+                    <p class="section-eyebrow">
+                        Segurança para sistemas de IA
+                    </p>
+
+                    <h2 class="section-title">
+                        Resultado da investigação
+                    </h2>
+                </div>
+
+            </div>
+
+            {% if detail %}
+
+                <div class="investigation-capability-note">
+
+                    <strong>
+                        Interpretação da análise
+                    </strong>
+
+                    <p>
+                        Esta etapa procura instruções, comandos ou outros
+                        conteúdos capazes de influenciar indevidamente
+                        sistemas de inteligência artificial que processem
+                        o documento.
+                    </p>
+
+                    <p>
+                        Evidências técnicas podem ser produzidas por mais
+                        de um verificador sobre uma mesma ocorrência.
+                        Por isso, a quantidade de evidências não representa
+                        necessariamente a quantidade de instruções suspeitas.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </section>
+
+
+        {# ============================================================
+           RESUMO INVESTIGATIVO
+           ============================================================ #}
+
+        {% if detail %}
+
+            <section class="card investigation-section">
+
+                <div class="investigation-section-heading">
+
+                    <div>
+                        <p class="section-eyebrow">
+                            Síntese
+                        </p>
+
+                        <h2 class="section-title">
+                            Panorama da investigação
+                        </h2>
+                    </div>
+
+                </div>
+
+                <dl class="investigation-data-table">
+
+                    <div>
+                        <dt>
+                            Classificação de risco
+                        </dt>
+
+                        <dd>
+                            {{ detail.risk_label }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Score
+                        </dt>
+
+                        <dd>
+                            {{ detail.score_label }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Ocorrências suspeitas
+                        </dt>
+
+                        <dd>
+                            {{ detail.occurrence_count }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Evidências técnicas
+                        </dt>
+
+                        <dd>
+                            {{ detail.evidence_count }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Evidências textuais
+                        </dt>
+
+                        <dd>
+                            {{ detail.textual_evidence_count }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Indicadores de ocultação
+                        </dt>
+
+                        <dd>
+                            {{ detail.concealment_evidence_count }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Fontes independentes com detecção
+                        </dt>
+
+                        <dd>
+                            {{ detail.independent_source_count }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Corroboração
+                        </dt>
+
+                        <dd>
+                            {{ detail.corroboration_label }}
+                        </dd>
+                    </div>
+
+                </dl>
+
+                {% if detail.summary %}
+
+                    <div class="investigation-technical-note">
+
+                        <strong>
+                            Conclusão automatizada
+                        </strong>
+
+                        <span>
+                            {{ detail.summary }}
+                        </span>
+
+                    </div>
+
+                {% endif %}
+
+            </section>
+
+
+            {# ========================================================
+               FONTES ANALISADAS
+               ======================================================== #}
+
+            <section class="card investigation-section">
+
+                <div class="investigation-section-heading">
+
+                    <div>
+                        <p class="section-eyebrow">
+                            Fontes e métodos
+                        </p>
+
+                        <h2 class="section-title">
+                            Camadas utilizadas na investigação
+                        </h2>
+                    </div>
+
+                </div>
+
+                <div class="produced-object-grid">
+
+                    {% for source in detail.sources %}
+
+                        <article class="produced-object">
+
+                            <strong>
+                                {{ source.label }}
+                            </strong>
+
+                            <span>
+                                {{ source.description }}
+                            </span>
+
+                            <small>
+                                {% if source.detected %}
+
+                                    Evidência identificada
+                                    ·
+                                    {{ source.evidence_count }}
+                                    registro(s)
+
+                                {% else %}
+
+                                    Nenhuma evidência produzida
+                                    por esta camada
+
+                                {% endif %}
+                            </small>
+
+                            {% if source.independent %}
+
+                                <small>
+                                    Fonte independente de extração
+                                </small>
+
+                            {% else %}
+
+                                <small>
+                                    Representação ou análise derivada
+                                </small>
+
+                            {% endif %}
+
+                        </article>
+
+                    {% endfor %}
+
+                </div>
+
+                <div class="investigation-capability-note">
+
+                    <strong>
+                        Sobre a corroboração
+                    </strong>
+
+                    <p>
+                        Texto nativo e OCR são tratados como fontes
+                        independentes. O documento normalizado e a análise
+                        tipográfica são representações técnicas derivadas
+                        utilizadas para ampliar a investigação, mas não são
+                        contabilizadas como novas fontes independentes.
+                    </p>
+
+                </div>
+
+            </section>
+
+
+            {# ========================================================
+               OCORRÊNCIA PRINCIPAL
+               ======================================================== #}
+
+            {% if detail.primary_occurrence %}
+
+                {% set occurrence = detail.primary_occurrence %}
+
+                <section class="card investigation-section">
+
+                    <div class="investigation-section-heading">
+
+                        <div>
+                            <p class="section-eyebrow">
+                                Evidência principal
+                            </p>
+
+                            <h2 class="section-title">
+                                {{ occurrence.title }}
+                            </h2>
+                        </div>
+
+                    </div>
+
+                    <div class="investigation-conclusion">
+
+                        <span
+                            class="
+                                investigation-conclusion__indicator
+                                investigation-conclusion__indicator--{{ investigation.status }}
+                            "
+                            aria-hidden="true"
+                        ></span>
+
+                        <div>
+
+                            <strong>
+                                {{ occurrence.corroboration_label }}
+                            </strong>
+
+                            <p>
+                                {{
+                                    occurrence.page_label
+                                    or "Localização não determinada"
+                                }}
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    {% if occurrence.excerpt %}
+
+                        <div class="investigation-technical-note">
+
+                            <strong>
+                                Trecho identificado
+                            </strong>
+
+                            <span class="investigation-break-value">
+                                “{{ occurrence.excerpt }}”
+                            </span>
+
+                        </div>
+
+                    {% endif %}
+
+                    <dl
+                        class="
+                            investigation-data-table
+                            investigation-data-table--compact
+                        "
+                    >
+
+                        <div>
+                            <dt>
+                                Localização
+                            </dt>
+
+                            <dd>
+                                {{ occurrence.page_label }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>
+                                Evidências relacionadas
+                            </dt>
+
+                            <dd>
+                                {{ occurrence.evidence_count }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>
+                                Confiança
+                            </dt>
+
+                            <dd>
+                                {{
+                                    occurrence.confidence_label
+                                    or "Não informada"
+                                }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt>
+                                Peso técnico
+                            </dt>
+
+                            <dd>
+                                {{
+                                    occurrence.weighted_score_label
+                                    or "Não informado"
+                                }}
+                            </dd>
+                        </div>
+
+                    </dl>
+
+
+                    {% if occurrence.source_labels %}
+
+                        <div class="investigation-static-list">
+
+                            <article class="investigation-static-item">
+
+                                <strong>
+                                    Fontes que identificaram a ocorrência
+                                </strong>
+
+                                <span>
+                                    {{
+                                        occurrence
+                                        .source_labels
+                                        |join(" · ")
+                                    }}
+                                </span>
+
+                            </article>
+
+                        </div>
+
+                    {% endif %}
+
+
+                    {% if occurrence.categories %}
+
+                        <div class="investigation-static-list">
+
+                            <article class="investigation-static-item">
+
+                                <strong>
+                                    Categorias relacionadas
+                                </strong>
+
+                                <span>
+                                    {{
+                                        occurrence
+                                        .categories
+                                        |join(" · ")
+                                    }}
+                                </span>
+
+                            </article>
+
+                        </div>
+
+                    {% endif %}
+
+
+                    {% if occurrence.detectors %}
+
+                        <details class="investigation-detail-item">
+
+                            <summary>
+
+                                <span>
+                                    Verificadores responsáveis
+                                </span>
+
+                                <small>
+                                    {{ occurrence.detectors|length }}
+                                    detector(es)
+                                </small>
+
+                            </summary>
+
+                            <div class="investigation-detail-item__content">
+
+                                <div class="investigation-static-list">
+
+                                    {% for detector in occurrence.detectors %}
+
+                                        <article class="investigation-static-item">
+
+                                            <strong>
+                                                {{ detector }}
+                                            </strong>
+
+                                        </article>
+
+                                    {% endfor %}
+
+                                </div>
+
+                            </div>
+
+                        </details>
+
+                    {% endif %}
+
+                </section>
+
+            {% endif %}
+
+
+            {# ========================================================
+               CORROBORAÇÃO ENTRE FONTES
+               ======================================================== #}
+
+            <section class="card investigation-section">
+
+                <div class="investigation-section-heading">
+
+                    <div>
+                        <p class="section-eyebrow">
+                            Validação cruzada
+                        </p>
+
+                        <h2 class="section-title">
+                            Corroboração entre fontes
+                        </h2>
+                    </div>
+
+                </div>
+
+                <div class="investigation-static-list">
+
+                    {% for source in detail.sources %}
+
+                        {% if source.independent %}
+
+                            <article class="investigation-static-item">
+
+                                <strong>
+                                    {{ source.label }}
+                                </strong>
+
+                                <span>
+                                    {% if source.detected %}
+
+                                        Evidência identificada
+                                        ·
+                                        {{ source.evidence_count }}
+                                        registro(s)
+
+                                    {% else %}
+
+                                        Nenhuma evidência identificada
+
+                                    {% endif %}
+                                </span>
+
+                            </article>
+
+                        {% endif %}
+
+                    {% endfor %}
+
+                </div>
+
+                <div class="investigation-technical-note">
+
+                    <strong>
+                        Resultado da validação cruzada
+                    </strong>
+
+                    <span>
+                        {{ detail.corroboration_label }}
+                    </span>
+
+                </div>
+
+            </section>
+
+
+            {# ========================================================
+               INDICADORES DE OCULTAÇÃO
+               ======================================================== #}
+
+            <section class="card investigation-section">
+
+                <div class="investigation-section-heading">
+
+                    <div>
+                        <p class="section-eyebrow">
+                            Apresentação visual
+                        </p>
+
+                        <h2 class="section-title">
+                            Indicadores de possível ocultação
+                        </h2>
+                    </div>
+
+                </div>
+
+                {% if detail.concealment_indicators %}
+
+                    <div class="investigation-validation-list">
+
+                        {% for indicator in detail.concealment_indicators %}
+
+                            <article
+                                class="
+                                    investigation-validation
+                                    investigation-validation--warning
+                                "
+                            >
+
+                                <header class="investigation-validation__header">
+
+                                    <strong>
+                                        {{ indicator.title }}
+                                    </strong>
+
+                                    <span>
+                                        {{ indicator.page_label }}
+                                    </span>
+
+                                </header>
+
+                                {% if indicator.excerpt %}
+
+                                    <p class="investigation-validation__message">
+                                        “{{ indicator.excerpt }}”
+                                    </p>
+
+                                {% endif %}
+
+                                <dl
+                                    class="
+                                        investigation-data-table
+                                        investigation-data-table--compact
+                                    "
+                                >
+
+                                    <div>
+                                        <dt>
+                                            Página
+                                        </dt>
+
+                                        <dd>
+                                            {{ indicator.page_label }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Fonte
+                                        </dt>
+
+                                        <dd>
+                                            {{ indicator.font_name }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Tamanho observado
+                                        </dt>
+
+                                        <dd>
+                                            {{ indicator.font_size_label }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Limite do detector
+                                        </dt>
+
+                                        <dd>
+                                            {{
+                                                indicator
+                                                .maximum_font_size_label
+                                            }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Cor identificada
+                                        </dt>
+
+                                        <dd>
+                                            {{ indicator.font_color }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Confiança
+                                        </dt>
+
+                                        <dd>
+                                            {{
+                                                indicator.confidence_label
+                                                or "Não informada"
+                                            }}
+                                        </dd>
+                                    </div>
+
+                                </dl>
+
+                                {% if indicator.detector %}
+
+                                    <small>
+                                        Verificador técnico:
+                                        {{ indicator.detector }}
+                                    </small>
+
+                                {% endif %}
+
+                            </article>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% else %}
+
+                    <div class="investigation-empty-state">
+
+                        <strong>
+                            Nenhum indicador de ocultação identificado
+                        </strong>
+
+                        <p>
+                            Os verificadores visuais executados não
+                            produziram evidências de texto anormalmente
+                            pequeno nesta análise.
+                        </p>
+
+                    </div>
+
+                {% endif %}
+
+            </section>
+
+
+            {# ========================================================
+               TODAS AS OCORRÊNCIAS
+               ======================================================== #}
+
+            {% if detail.occurrences %}
+
+                <section class="card investigation-section">
+
+                    <div class="investigation-section-heading">
+
+                        <div>
+                            <p class="section-eyebrow">
+                                Ocorrências
+                            </p>
+
+                            <h2 class="section-title">
+                                Possíveis instruções identificadas
+                            </h2>
+                        </div>
+
+                    </div>
+
+                    <div class="investigation-detail-list">
+
+                        {% for occurrence in detail.occurrences %}
+
+                            <details class="investigation-detail-item">
+
+                                <summary>
+
+                                    <span>
+                                        Ocorrência
+                                        {{ occurrence.index }}
+                                        ·
+                                        {{ occurrence.page_label }}
+                                    </span>
+
+                                    <small>
+                                        {{ occurrence.evidence_count }}
+                                        evidência(s)
+                                    </small>
+
+                                </summary>
+
+                                <div class="investigation-detail-item__content">
+
+                                    {% if occurrence.excerpt %}
+
+                                        <div class="investigation-technical-note">
+
+                                            <strong>
+                                                Trecho
+                                            </strong>
+
+                                            <span class="investigation-break-value">
+                                                “{{ occurrence.excerpt }}”
+                                            </span>
+
+                                        </div>
+
+                                    {% endif %}
+
+                                    <dl
+                                        class="
+                                            investigation-data-table
+                                            investigation-data-table--compact
+                                        "
+                                    >
+
+                                        <div>
+                                            <dt>
+                                                Localização
+                                            </dt>
+
+                                            <dd>
+                                                {{ occurrence.page_label }}
+                                            </dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>
+                                                Corroboração
+                                            </dt>
+
+                                            <dd>
+                                                {{
+                                                    occurrence
+                                                    .corroboration_label
+                                                }}
+                                            </dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>
+                                                Confiança
+                                            </dt>
+
+                                            <dd>
+                                                {{
+                                                    occurrence
+                                                    .confidence_label
+                                                    or "Não informada"
+                                                }}
+                                            </dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>
+                                                Evidências relacionadas
+                                            </dt>
+
+                                            <dd>
+                                                {{
+                                                    occurrence
+                                                    .evidence_count
+                                                }}
+                                            </dd>
+                                        </div>
+
+                                    </dl>
+
+                                    {% if occurrence.source_labels %}
+
+                                        <div class="investigation-static-list">
+
+                                            <article
+                                                class="
+                                                    investigation-static-item
+                                                "
+                                            >
+
+                                                <strong>
+                                                    Fontes
+                                                </strong>
+
+                                                <span>
+                                                    {{
+                                                        occurrence
+                                                        .source_labels
+                                                        |join(" · ")
+                                                    }}
+                                                </span>
+
+                                            </article>
+
+                                        </div>
+
+                                    {% endif %}
+
+                                    {% if occurrence.categories %}
+
+                                        <div class="investigation-static-list">
+
+                                            <article
+                                                class="
+                                                    investigation-static-item
+                                                "
+                                            >
+
+                                                <strong>
+                                                    Categorias
+                                                </strong>
+
+                                                <span>
+                                                    {{
+                                                        occurrence
+                                                        .categories
+                                                        |join(" · ")
+                                                    }}
+                                                </span>
+
+                                            </article>
+
+                                        </div>
+
+                                    {% endif %}
+
+                                </div>
+
+                            </details>
+
+                        {% endfor %}
+
+                    </div>
+
+                </section>
+
+            {% endif %}
+
+
+            {# ========================================================
+               TODAS AS EVIDÊNCIAS TÉCNICAS
+               ======================================================== #}
+
+            <section class="card investigation-section">
+
+                <div class="investigation-section-heading">
+
+                    <div>
+                        <p class="section-eyebrow">
+                            Dados técnicos
+                        </p>
+
+                        <h2 class="section-title">
+                            Evidências produzidas pelos verificadores
+                        </h2>
+                    </div>
+
+                </div>
+
+                <div class="investigation-capability-note">
+
+                    <strong>
+                        Como interpretar esta lista
+                    </strong>
+
+                    <p>
+                        Os itens abaixo são evidências técnicas individuais.
+                        Mais de uma evidência pode estar associada à mesma
+                        ocorrência textual porque diferentes verificadores
+                        ou fontes podem identificar o mesmo conteúdo.
+                    </p>
+
+                </div>
+
+                {% if detail.evidences %}
+
+                    <div class="investigation-detail-list">
+
+                        {% for evidence in detail.evidences %}
+
+                            <details class="investigation-detail-item">
+
+                                <summary>
+
+                                    <span>
+                                        {{
+                                            evidence.category_label
+                                            or "Evidência técnica"
+                                        }}
+                                    </span>
+
+                                    <small>
+                                        {{
+                                            evidence.source_label
+                                            or "Fonte não informada"
+                                        }}
+                                    </small>
+
+                                </summary>
+
+                                <div class="investigation-detail-item__content">
+
+                                    {% if
+                                        evidence.original_excerpt
+                                        or evidence.normalized_excerpt
+                                    %}
+
+                                        <div class="investigation-technical-note">
+
+                                            <strong>
+                                                Trecho relacionado
+                                            </strong>
+
+                                            <span class="investigation-break-value">
+                                                {{
+                                                    evidence.original_excerpt
+                                                    or
+                                                    evidence.normalized_excerpt
+                                                }}
+                                            </span>
+
+                                        </div>
+
+                                    {% endif %}
+
+                                    <dl
+                                        class="
+                                            investigation-data-table
+                                            investigation-data-table--compact
+                                        "
+                                    >
+
+                                        <div>
+                                            <dt>
+                                                Detector
+                                            </dt>
+
+                                            <dd>
+                                                {{ evidence.detector }}
+                                            </dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>
+                                                Categoria
+                                            </dt>
+
+                                            <dd>
+                                                {{
+                                                    evidence.category_label
+                                                    or
+                                                    "Não categorizada"
+                                                }}
+                                            </dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>
+                                                Fonte
+                                            </dt>
+
+                                            <dd>
+                                                {{
+                                                    evidence.source_label
+                                                    or
+                                                    evidence.source
+                                                    or
+                                                    "Não informada"
+                                                }}
+                                            </dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>
+                                                Página
+                                            </dt>
+
+                                            <dd>
+                                                {% if evidence.page_number %}
+
+                                                    Página
+                                                    {{ evidence.page_number }}
+
+                                                {% else %}
+
+                                                    Não determinada
+                                                    nesta fonte
+
+                                                {% endif %}
+                                            </dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>
+                                                Confiança
+                                            </dt>
+
+                                            <dd>
+                                                {{
+                                                    evidence.confidence_label
+                                                    or
+                                                    "Não informada"
+                                                }}
+                                            </dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>
+                                                Peso técnico
+                                            </dt>
+
+                                            <dd>
+                                                {{
+                                                    evidence
+                                                    .weighted_score_label
+                                                    or
+                                                    "Não informado"
+                                                }}
+                                            </dd>
+                                        </div>
+
+                                        {% if evidence.language %}
+
+                                            <div>
+                                                <dt>
+                                                    Idioma
+                                                </dt>
+
+                                                <dd>
+                                                    {{ evidence.language }}
+                                                </dd>
+                                            </div>
+
+                                        {% endif %}
+
+                                        {% if evidence.font_size is not none %}
+
+                                            <div>
+                                                <dt>
+                                                    Tamanho da fonte
+                                                </dt>
+
+                                                <dd>
+                                                    {{ evidence.font_size }}
+                                                    pt
+                                                </dd>
+                                            </div>
+
+                                        {% endif %}
+
+                                        {% if evidence.font_name %}
+
+                                            <div>
+                                                <dt>
+                                                    Fonte tipográfica
+                                                </dt>
+
+                                                <dd>
+                                                    {{ evidence.font_name }}
+                                                </dd>
+                                            </div>
+
+                                        {% endif %}
+
+                                        {% if evidence.font_color %}
+
+                                            <div>
+                                                <dt>
+                                                    Cor
+                                                </dt>
+
+                                                <dd>
+                                                    {{ evidence.font_color }}
+                                                </dd>
+                                            </div>
+
+                                        {% endif %}
+
+                                    </dl>
+
+                                    {% if evidence.matched_rule %}
+
+                                        <div class="investigation-technical-note">
+
+                                            <strong>
+                                                Regra ou sinal identificado
+                                            </strong>
+
+                                            <span>
+                                                {{ evidence.matched_rule }}
+                                            </span>
+
+                                        </div>
+
+                                    {% endif %}
+
+                                </div>
+
+                            </details>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% else %}
+
+                    <div class="investigation-empty-state">
+
+                        <strong>
+                            Nenhuma evidência técnica disponível
+                        </strong>
+
+                        <p>
+                            A investigação de segurança para IA não
+                            disponibilizou evidências individuais nesta
+                            execução.
+                        </p>
+
+                    </div>
+
+                {% endif %}
+
+            </section>
+
+        {% else %}
+
+            <section class="card investigation-section">
+
+                <div class="investigation-empty-state">
+
+                    <strong>
+                        Dados detalhados não disponíveis
+                    </strong>
+
+                    <p>
+                        A etapa de segurança para IA foi reconhecida,
+                        mas não disponibilizou o detalhamento técnico
+                        desta execução.
+                    </p>
+
+                </div>
+
+            </section>
+
+        {% endif %}
+
     {% elif slug == "evidence" %}
 
         <section class="card investigation-section">

@@ -103,11 +103,11 @@ class InvestigationViewBuilder:
         ]
 
     def build_detail(
-        self,
-        *,
-        analysis_id: UUID,
-        slug: str,
-        analysis_view: dict[str, Any],
+            self,
+            *,
+            analysis_id: UUID,
+            slug: str,
+            analysis_view: dict[str, Any],
     ) -> dict[str, Any]:
         """
         Constrói o contexto de apresentação
@@ -129,8 +129,8 @@ class InvestigationViewBuilder:
         )
 
         if (
-            normalized_slug
-            not in self._SUPPORTED_SLUGS
+                normalized_slug
+                not in self._SUPPORTED_SLUGS
         ):
             raise ValueError(
                 "Investigação não reconhecida."
@@ -151,12 +151,22 @@ class InvestigationViewBuilder:
             ]
         )
 
+        detail = (
+            self._build_detail_content(
+                slug=normalized_slug,
+                analysis=analysis_view,
+            )
+        )
+
         return {
             "analysis": (
                 analysis_view
             ),
             "investigation": (
                 investigation
+            ),
+            "detail": (
+                detail
             ),
             "slug": (
                 normalized_slug
@@ -165,6 +175,931 @@ class InvestigationViewBuilder:
                 f"/analyses/{analysis_id}"
             ),
         }
+
+    def _build_detail_content(
+        self,
+        *,
+        slug: str,
+        analysis: dict[str, Any],
+    ) -> dict[str, Any] | None:
+        """
+        Constrói conteúdo detalhado específico
+        para investigações que necessitam de
+        organização adicional dos dados.
+        """
+
+        if slug == "ai-security":
+            return (
+                self._build_ai_security_detail(
+                    analysis
+                )
+            )
+
+        return None
+
+    def _build_ai_security_detail(
+        self,
+        analysis: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Organiza as evidências de segurança para IA
+        em uma visão investigativa compreensível.
+
+        A apresentação diferencia:
+
+        - ocorrências suspeitas;
+        - evidências técnicas;
+        - fontes independentes;
+        - representações derivadas;
+        - indicadores de ocultação visual.
+        """
+
+        evidences = list(
+            analysis.get(
+                "prompt_injection_evidences",
+                [],
+            )
+        )
+
+        textual_evidences = [
+            evidence
+            for evidence
+            in evidences
+            if evidence.get(
+                "category"
+            )
+            != "visual_concealment"
+        ]
+
+        concealment_evidences = [
+            evidence
+            for evidence
+            in evidences
+            if evidence.get(
+                "category"
+            )
+            == "visual_concealment"
+        ]
+
+        occurrences = (
+            self._group_ai_security_occurrences(
+                textual_evidences
+            )
+        )
+
+        sources = (
+            self._build_ai_security_sources(
+                evidences
+            )
+        )
+
+        concealment_indicators = (
+            self._build_concealment_indicators(
+                concealment_evidences
+            )
+        )
+
+        independent_sources_detected = [
+            source
+            for source
+            in sources
+            if (
+                source[
+                    "independent"
+                ]
+                and source[
+                    "detected"
+                ]
+            )
+        ]
+
+        corroborated = (
+            len(
+                independent_sources_detected
+            )
+            >= 2
+        )
+
+        primary_occurrence = (
+            occurrences[0]
+            if occurrences
+            else None
+        )
+
+        return {
+            "type": (
+                "ai-security"
+            ),
+
+            "risk_level": (
+                analysis.get(
+                    "prompt_injection_risk_level",
+                    "none",
+                )
+            ),
+
+            "risk_label": (
+                analysis.get(
+                    "prompt_injection_risk_label",
+                    "Nenhum",
+                )
+            ),
+
+            "score": (
+                analysis.get(
+                    "prompt_injection_score",
+                    0.0,
+                )
+            ),
+
+            "score_label": (
+                analysis.get(
+                    "prompt_injection_score_label",
+                    "0.0%",
+                )
+            ),
+
+            "summary": (
+                analysis.get(
+                    "prompt_injection_summary",
+                    ""
+                )
+            ),
+
+            "evidence_count": (
+                len(
+                    evidences
+                )
+            ),
+
+            "textual_evidence_count": (
+                len(
+                    textual_evidences
+                )
+            ),
+
+            "occurrence_count": (
+                len(
+                    occurrences
+                )
+            ),
+
+            "concealment_evidence_count": (
+                len(
+                    concealment_evidences
+                )
+            ),
+
+            "category_count": (
+                analysis.get(
+                    "prompt_injection_category_count",
+                    0,
+                )
+            ),
+
+            "categories": (
+                analysis.get(
+                    "prompt_injection_category_labels",
+                    [],
+                )
+            ),
+
+            "languages": (
+                analysis.get(
+                    "prompt_injection_languages",
+                    [],
+                )
+            ),
+
+            "sources": (
+                sources
+            ),
+
+            "independent_source_count": (
+                len(
+                    independent_sources_detected
+                )
+            ),
+
+            "corroborated": (
+                corroborated
+            ),
+
+            "corroboration_label": (
+                "Corroborado por fontes independentes"
+                if corroborated
+                else (
+                    "Identificado em uma fonte independente"
+                    if independent_sources_detected
+                    else (
+                        "Sem corroboração independente"
+                    )
+                )
+            ),
+
+            "occurrences": (
+                occurrences
+            ),
+
+            "primary_occurrence": (
+                primary_occurrence
+            ),
+
+            "concealment_indicators": (
+                concealment_indicators
+            ),
+
+            "evidences": (
+                evidences
+            ),
+        }
+
+    def _build_ai_security_sources(
+        self,
+        evidences: list[
+            dict[str, Any]
+        ],
+    ) -> list[
+        dict[str, Any]
+    ]:
+        """
+        Monta o quadro de fontes utilizadas.
+
+        Texto nativo e OCR são tratados como fontes
+        independentes.
+
+        Documento normalizado é uma representação
+        derivada utilizada internamente pelo DocDNA.
+
+        Análise tipográfica representa verificação
+        estrutural/visual dos TextSpan.
+        """
+
+        definitions = (
+            {
+                "source": (
+                    "native_text"
+                ),
+                "label": (
+                    "Texto nativo do PDF"
+                ),
+                "description": (
+                    "Conteúdo existente diretamente "
+                    "na camada textual do arquivo PDF."
+                ),
+                "independent": True,
+            },
+            {
+                "source": (
+                    "ocr"
+                ),
+                "label": (
+                    "OCR"
+                ),
+                "description": (
+                    "Conteúdo identificado por leitura "
+                    "óptica independente da camada "
+                    "textual do PDF."
+                ),
+                "independent": True,
+            },
+            {
+                "source": (
+                    "normalized_document"
+                ),
+                "label": (
+                    "Documento normalizado"
+                ),
+                "description": (
+                    "Representação textual reconstruída "
+                    "pelo DocDNA para análise estrutural."
+                ),
+                "independent": False,
+            },
+            {
+                "source": (
+                    "normalized_document_visual"
+                ),
+                "label": (
+                    "Análise tipográfica"
+                ),
+                "description": (
+                    "Verificação de tamanho, fonte e "
+                    "características dos trechos textuais."
+                ),
+                "independent": False,
+            },
+        )
+
+        result = []
+
+        for definition in definitions:
+            source_name = (
+                definition[
+                    "source"
+                ]
+            )
+
+            source_evidences = [
+                evidence
+                for evidence
+                in evidences
+                if evidence.get(
+                    "source"
+                )
+                == source_name
+            ]
+
+            result.append(
+                {
+                    **definition,
+                    "detected": bool(
+                        source_evidences
+                    ),
+                    "evidence_count": (
+                        len(
+                            source_evidences
+                        )
+                    ),
+                }
+            )
+
+        return result
+
+    def _group_ai_security_occurrences(
+        self,
+        evidences: list[
+            dict[str, Any]
+        ],
+    ) -> list[
+        dict[str, Any]
+    ]:
+        """
+        Agrupa evidências técnicas que provavelmente
+        representam a mesma ocorrência textual.
+
+        O agrupamento é exclusivo da apresentação.
+        Não modifica score nem evidências de domínio.
+        """
+
+        occurrences: list[
+            dict[str, Any]
+        ] = []
+
+        ordered_evidences = sorted(
+            evidences,
+            key=lambda evidence: (
+                float(
+                    evidence.get(
+                        "weighted_score",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+                float(
+                    evidence.get(
+                        "confidence",
+                        0.0,
+                    )
+                    or 0.0
+                ),
+            ),
+            reverse=True,
+        )
+
+        for evidence in ordered_evidences:
+            excerpt = (
+                evidence.get(
+                    "original_excerpt"
+                )
+                or evidence.get(
+                    "normalized_excerpt"
+                )
+                or ""
+            )
+
+            signature = (
+                self._normalize_occurrence_text(
+                    excerpt
+                )
+            )
+
+            matched_occurrence = None
+
+            for occurrence in occurrences:
+                if (
+                    self._occurrence_texts_match(
+                        signature,
+                        occurrence[
+                            "_signature"
+                        ],
+                    )
+                ):
+                    matched_occurrence = (
+                        occurrence
+                    )
+                    break
+
+            if matched_occurrence is None:
+                matched_occurrence = {
+                    "_signature": (
+                        signature
+                    ),
+                    "_source_names": set(),
+                    "_detector_names": set(),
+                    "_categories": set(),
+                    "_page_numbers": set(),
+
+                    "excerpt": (
+                        excerpt
+                    ),
+
+                    "confidence": (
+                        evidence.get(
+                            "confidence"
+                        )
+                    ),
+
+                    "confidence_label": (
+                        evidence.get(
+                            "confidence_label"
+                        )
+                    ),
+
+                    "weighted_score": (
+                        evidence.get(
+                            "weighted_score"
+                        )
+                    ),
+
+                    "weighted_score_label": (
+                        evidence.get(
+                            "weighted_score_label"
+                        )
+                    ),
+
+                    "matched_rule": (
+                        evidence.get(
+                            "matched_rule"
+                        )
+                    ),
+
+                    "evidence_count": 0,
+                }
+
+                occurrences.append(
+                    matched_occurrence
+                )
+
+            matched_occurrence[
+                "evidence_count"
+            ] += 1
+
+            source = evidence.get(
+                "source"
+            )
+
+            if source:
+                matched_occurrence[
+                    "_source_names"
+                ].add(
+                    source
+                )
+
+            detector = evidence.get(
+                "detector"
+            )
+
+            if detector:
+                matched_occurrence[
+                    "_detector_names"
+                ].add(
+                    detector
+                )
+
+            category_label = (
+                evidence.get(
+                    "category_label"
+                )
+            )
+
+            if category_label:
+                matched_occurrence[
+                    "_categories"
+                ].add(
+                    category_label
+                )
+
+            page_number = evidence.get(
+                "page_number"
+            )
+
+            if page_number is not None:
+                matched_occurrence[
+                    "_page_numbers"
+                ].add(
+                    page_number
+                )
+
+        result = []
+
+        for index, occurrence in enumerate(
+            occurrences,
+            start=1,
+        ):
+            source_names = sorted(
+                occurrence[
+                    "_source_names"
+                ]
+            )
+
+            source_labels = [
+                self._ai_security_source_label(
+                    source
+                )
+                for source
+                in source_names
+            ]
+
+            page_numbers = sorted(
+                occurrence[
+                    "_page_numbers"
+                ]
+            )
+
+            independent_sources = {
+                source
+                for source
+                in source_names
+                if source
+                in {
+                    "native_text",
+                    "ocr",
+                }
+            }
+
+            corroborated = (
+                len(
+                    independent_sources
+                )
+                >= 2
+            )
+
+            result.append(
+                {
+                    "index": (
+                        index
+                    ),
+
+                    "title": (
+                        "Possível instrução "
+                        "direcionada a sistema de IA"
+                    ),
+
+                    "excerpt": (
+                        occurrence[
+                            "excerpt"
+                        ]
+                    ),
+
+                    "page_numbers": (
+                        page_numbers
+                    ),
+
+                    "page_label": (
+                        self._format_page_labels(
+                            page_numbers
+                        )
+                    ),
+
+                    "sources": (
+                        source_names
+                    ),
+
+                    "source_labels": (
+                        source_labels
+                    ),
+
+                    "detectors": sorted(
+                        occurrence[
+                            "_detector_names"
+                        ]
+                    ),
+
+                    "categories": sorted(
+                        occurrence[
+                            "_categories"
+                        ]
+                    ),
+
+                    "confidence": (
+                        occurrence[
+                            "confidence"
+                        ]
+                    ),
+
+                    "confidence_label": (
+                        occurrence[
+                            "confidence_label"
+                        ]
+                    ),
+
+                    "weighted_score": (
+                        occurrence[
+                            "weighted_score"
+                        ]
+                    ),
+
+                    "weighted_score_label": (
+                        occurrence[
+                            "weighted_score_label"
+                        ]
+                    ),
+
+                    "matched_rule": (
+                        occurrence[
+                            "matched_rule"
+                        ]
+                    ),
+
+                    "evidence_count": (
+                        occurrence[
+                            "evidence_count"
+                        ]
+                    ),
+
+                    "corroborated": (
+                        corroborated
+                    ),
+
+                    "corroboration_label": (
+                        "Confirmado em texto nativo e OCR"
+                        if corroborated
+                        else (
+                            "Identificado em uma fonte"
+                        )
+                    ),
+                }
+            )
+
+        return result
+
+    def _build_concealment_indicators(
+        self,
+        evidences: list[
+            dict[str, Any]
+        ],
+    ) -> list[
+        dict[str, Any]
+    ]:
+        """
+        Organiza indicadores de possível ocultação
+        tipográfica.
+        """
+
+        result = []
+
+        for index, evidence in enumerate(
+            evidences,
+            start=1,
+        ):
+            font_size = evidence.get(
+                "font_size"
+            )
+
+            maximum_font_size = (
+                evidence.get(
+                    "maximum_font_size"
+                )
+            )
+
+            result.append(
+                {
+                    "index": index,
+
+                    "type": (
+                        "tiny_text"
+                    ),
+
+                    "title": (
+                        "Texto com fonte "
+                        "anormalmente pequena"
+                    ),
+
+                    "page_number": (
+                        evidence.get(
+                            "page_number"
+                        )
+                    ),
+
+                    "page_label": (
+                        self._format_single_page_label(
+                            evidence.get(
+                                "page_number"
+                            )
+                        )
+                    ),
+
+                    "excerpt": (
+                        evidence.get(
+                            "original_excerpt"
+                        )
+                        or evidence.get(
+                            "normalized_excerpt"
+                        )
+                        or ""
+                    ),
+
+                    "font_name": (
+                        evidence.get(
+                            "font_name"
+                        )
+                        or "Não identificada"
+                    ),
+
+                    "font_size": (
+                        font_size
+                    ),
+
+                    "font_size_label": (
+                        (
+                            f"{float(font_size):.2f} pt"
+                        )
+                        if font_size
+                        is not None
+                        else (
+                            "Não informado"
+                        )
+                    ),
+
+                    "maximum_font_size": (
+                        maximum_font_size
+                    ),
+
+                    "maximum_font_size_label": (
+                        (
+                            f"{float(maximum_font_size):.2f} pt"
+                        )
+                        if maximum_font_size
+                        is not None
+                        else (
+                            "Não informado"
+                        )
+                    ),
+
+                    "font_color": (
+                        evidence.get(
+                            "font_color"
+                        )
+                        or "Não informada"
+                    ),
+
+                    "confidence_label": (
+                        evidence.get(
+                            "confidence_label"
+                        )
+                    ),
+
+                    "detector": (
+                        evidence.get(
+                            "detector"
+                        )
+                    ),
+                }
+            )
+
+        return result
+
+    @staticmethod
+    def _normalize_occurrence_text(
+        value: str,
+    ) -> str:
+        if not isinstance(
+            value,
+            str,
+        ):
+            return ""
+
+        return " ".join(
+            value
+            .casefold()
+            .split()
+        )
+
+    def _occurrence_texts_match(
+        self,
+        first: str,
+        second: str,
+    ) -> bool:
+        if not first or not second:
+            return False
+
+        if (
+            first in second
+            or second in first
+        ):
+            return True
+
+        first_tokens = {
+            token
+            for token
+            in first.split()
+            if len(token) >= 3
+        }
+
+        second_tokens = {
+            token
+            for token
+            in second.split()
+            if len(token) >= 3
+        }
+
+        if (
+            not first_tokens
+            or not second_tokens
+        ):
+            return False
+
+        intersection = (
+            first_tokens
+            & second_tokens
+        )
+
+        union = (
+            first_tokens
+            | second_tokens
+        )
+
+        similarity = (
+            len(intersection)
+            / len(union)
+        )
+
+        return (
+            similarity >= 0.70
+        )
+
+    @staticmethod
+    def _ai_security_source_label(
+        source: str,
+    ) -> str:
+        labels = {
+            "native_text": (
+                "Texto nativo do PDF"
+            ),
+            "ocr": (
+                "OCR"
+            ),
+            "normalized_document": (
+                "Documento normalizado"
+            ),
+            "normalized_document_visual": (
+                "Análise tipográfica"
+            ),
+        }
+
+        return labels.get(
+            source,
+            source,
+        )
+
+    @staticmethod
+    def _format_page_labels(
+        page_numbers: list[int],
+    ) -> str:
+        if not page_numbers:
+            return (
+                "Localização não determinada "
+                "nesta fonte"
+            )
+
+        if len(page_numbers) == 1:
+            return (
+                f"Página {page_numbers[0]}"
+            )
+
+        pages = ", ".join(
+            str(page)
+            for page
+            in page_numbers
+        )
+
+        return (
+            f"Páginas {pages}"
+        )
+
+    @staticmethod
+    def _format_single_page_label(
+        page_number: Any,
+    ) -> str:
+        if page_number is None:
+            return (
+                "Página não determinada"
+            )
+
+        return (
+            f"Página {page_number}"
+        )
 
     def _build_identity_card(
         self,
@@ -736,6 +1671,34 @@ class InvestigationViewBuilder:
                 "",
             )
         ).strip()
+
+        prompt_evidences = list(
+            analysis.get(
+                "prompt_injection_evidences",
+                [],
+            )
+        )
+
+        corroborating_sources = {
+            evidence.get(
+                "source"
+            )
+            for evidence
+            in prompt_evidences
+            if evidence.get(
+                "source"
+            )
+            in {
+                "native_text",
+                "ocr",
+            }
+        }
+
+        corroborating_source_count = (
+            len(
+                corroborating_sources
+            )
+        )
 
         if not has_assessment:
             status = (

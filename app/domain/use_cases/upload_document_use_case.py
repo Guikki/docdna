@@ -130,10 +130,18 @@ class UploadDocumentUseCase:
         prompt_injection_assessment = (
             prompt_injection_service
             .analyze(
+                native_text=(
+                    analysis_context
+                    .native_text
+                ),
+                ocr=(
+                    analysis_context
+                    .ocr
+                ),
                 normalized_document=(
                     analysis_context
                     .normalized_document
-                )
+                ),
             )
         )
 
