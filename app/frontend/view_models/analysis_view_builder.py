@@ -82,6 +82,26 @@ class AnalysisViewBuilder:
             )
         )
 
+        prompt_injection_locations = (
+            analysis_data.get(
+                "prompt_injection_locations",
+                [],
+            )
+        )
+
+        visual_concealment_analysis = (
+            analysis_data.get(
+                "visual_concealment_analysis"
+            )
+        )
+
+        visual_concealment_locations = (
+            analysis_data.get(
+                "visual_concealment_locations",
+                [],
+            )
+        )
+
         formatted_evidences = [
             {
                 "code": evidence.code,
@@ -313,6 +333,153 @@ class AnalysisViewBuilder:
             in numeric_line_locations
         ]
 
+        formatted_prompt_injection_locations = [
+            {
+                "evidence_index": (
+                    location.evidence_index
+                ),
+                "evidence_code": (
+                    location.evidence_code
+                ),
+                "detector": (
+                    location.detector
+                ),
+                "page_number": (
+                    location.page_number
+                ),
+                "matched_content": (
+                    location.matched_content
+                ),
+                "left": (
+                    location.left
+                ),
+                "top": (
+                    location.top
+                ),
+                "width": (
+                    location.width
+                ),
+                "height": (
+                    location.height
+                ),
+                "confidence": (
+                    location.confidence
+                ),
+                "confidence_label": (
+                    self._format_confidence(
+                        location.confidence
+                    )
+                ),
+                "source_image_url": (
+                    self
+                    ._build_extracted_file_url(
+                        location
+                        .source_image_path
+                    )
+                ),
+                "annotated_image_url": (
+                    self
+                    ._build_extracted_file_url(
+                        location
+                        .annotated_image_path
+                    )
+                ),
+                "located": (
+                    location.located
+                ),
+                "message": (
+                    location.message
+                ),
+            }
+            for location
+            in prompt_injection_locations
+        ]
+
+        formatted_visual_concealment_locations = [
+            {
+                "finding_index": (
+                    location.finding_index
+                ),
+                "finding_code": (
+                    location.finding_code
+                ),
+                "detector": (
+                    location.detector
+                ),
+                "page_number": (
+                    location.page_number
+                ),
+                "matched_content": (
+                    location.matched_content
+                ),
+                "left": (
+                    location.left
+                ),
+                "top": (
+                    location.top
+                ),
+                "width": (
+                    location.width
+                ),
+                "height": (
+                    location.height
+                ),
+                "confidence": (
+                    location.confidence
+                ),
+                "confidence_label": (
+                    self._format_confidence(
+                        location.confidence
+                    )
+                ),
+                "font_name": (
+                    location.font_name
+                ),
+                "font_size": (
+                    self._format_decimal(
+                        location.font_size
+                    )
+                    if location.font_size
+                    is not None
+                    else "Não informado"
+                ),
+                "font_color_hex": (
+                    location.font_color_hex
+                    or "Não informada"
+                ),
+                "source_image_url": (
+                    self
+                    ._build_extracted_file_url(
+                        location
+                        .source_image_path
+                    )
+                ),
+                "annotated_image_url": (
+                    self
+                    ._build_extracted_file_url(
+                        location
+                        .annotated_image_path
+                    )
+                ),
+                "located": (
+                    location.located
+                ),
+                "message": (
+                    location.message
+                ),
+                "coordinates_label": (
+                    self._format_location_coordinates(
+                        left=location.left,
+                        top=location.top,
+                        width=location.width,
+                        height=location.height,
+                    )
+                ),
+            }
+            for location
+            in visual_concealment_locations
+        ]
+
         prompt_injection_categories = (
             self
             ._prompt_injection_metadata_list(
@@ -342,6 +509,34 @@ class AnalysisViewBuilder:
                 "strong_categories",
             )
         )
+
+        formatted_visual_concealment = (
+            self._build_visual_concealment_analysis(
+                visual_concealment_analysis
+            )
+        )
+
+        visual_locations_by_finding_index = {
+            location[
+                "finding_index"
+            ]: location
+            for location
+            in formatted_visual_concealment_locations
+        }
+
+        for finding_index, finding in enumerate(
+            formatted_visual_concealment[
+                "white_text_findings"
+            ],
+            start=1,
+        ):
+            finding[
+                "visual_location"
+            ] = (
+                visual_locations_by_finding_index.get(
+                    finding_index
+                )
+            )
 
         return {
             "id": (
@@ -830,6 +1025,32 @@ class AnalysisViewBuilder:
                 formatted_prompt_injection_evidences
             ),
 
+            "prompt_injection_locations": (
+                formatted_prompt_injection_locations
+            ),
+
+            "located_prompt_injection_count": (
+                sum(
+                    location.located
+                    for location
+                    in prompt_injection_locations
+                )
+            ),
+
+            "unlocated_prompt_injection_count": (
+                sum(
+                    not location.located
+                    for location
+                    in prompt_injection_locations
+                )
+            ),
+
+            "prompt_injection_location_count": (
+                len(
+                    prompt_injection_locations
+                )
+            ),
+
             "prompt_injection_evidence_count": (
                 prompt_injection_assessment
                 .evidence_count
@@ -907,6 +1128,75 @@ class AnalysisViewBuilder:
             "prompt_injection_strong_category_count": (
                 len(
                     prompt_injection_strong_categories
+                )
+            ),
+
+            # Ocultação visual textual
+            "has_visual_concealment_findings": (
+                formatted_visual_concealment[
+                    "has_findings"
+                ]
+            ),
+
+            "visual_concealment_total_count": (
+                formatted_visual_concealment[
+                    "total_findings"
+                ]
+            ),
+
+            "visual_concealment_white_text_count": (
+                formatted_visual_concealment[
+                    "white_text_count"
+                ]
+            ),
+
+            "visual_concealment_tiny_text_count": (
+                formatted_visual_concealment[
+                    "tiny_text_count"
+                ]
+            ),
+
+            "visual_concealment_highest_confidence": (
+                formatted_visual_concealment[
+                    "highest_confidence"
+                ]
+            ),
+
+            "visual_concealment_highest_confidence_label": (
+                formatted_visual_concealment[
+                    "highest_confidence_label"
+                ]
+            ),
+
+            "visual_concealment_white_text_findings": (
+                formatted_visual_concealment[
+                    "white_text_findings"
+                ]
+            ),
+
+            "visual_concealment_tiny_text_evidences": (
+                formatted_visual_concealment[
+                    "tiny_text_evidences"
+                ]
+            ),
+
+            "visual_concealment_locations": (
+                formatted_visual_concealment_locations
+            ),
+
+            "located_visual_concealment_count": (
+                sum(
+                    location[
+                        "located"
+                    ]
+                    for location
+                    in formatted_visual_concealment_locations
+                )
+            ),
+
+            "visual_concealment_location_count": (
+                len(
+                    formatted_visual_concealment_locations
                 )
             ),
 
@@ -1742,6 +2032,319 @@ class AnalysisViewBuilder:
             "fingerprints técnicos de imagem."
         )
 
+    def _build_visual_concealment_analysis(
+        self,
+        analysis: Any,
+    ) -> dict[str, Any]:
+        if analysis is None:
+            return {
+                "has_findings": False,
+                "total_findings": 0,
+                "white_text_count": 0,
+                "tiny_text_count": 0,
+                "highest_confidence": 0.0,
+                "highest_confidence_label": "0.0%",
+                "white_text_findings": [],
+                "tiny_text_evidences": [],
+            }
+
+        white_text_findings = []
+
+        for finding in getattr(
+            analysis,
+            "white_text_findings",
+            (),
+        ):
+            box = getattr(
+                finding,
+                "bounding_box",
+                None,
+            )
+
+            signals = list(
+                getattr(
+                    finding,
+                    "signals",
+                    (),
+                )
+            )
+
+            white_text_findings.append(
+                {
+                    "code": getattr(
+                        finding,
+                        "code",
+                        "near_white_text",
+                    ),
+                    "detector": getattr(
+                        finding,
+                        "detector",
+                        "white_text_detector",
+                    ),
+                    "page_number": getattr(
+                        finding,
+                        "page_number",
+                        None,
+                    ),
+                    "text": getattr(
+                        finding,
+                        "text",
+                        "",
+                    ),
+                    "font_name": getattr(
+                        finding,
+                        "font_name",
+                        "Não informada",
+                    ),
+                    "font_size": self._format_decimal(
+                        getattr(
+                            finding,
+                            "font_size",
+                            0.0,
+                        )
+                    ),
+                    "font_color_hex": getattr(
+                        finding,
+                        "font_color_hex",
+                        "Não informada",
+                    ),
+                    "confidence": getattr(
+                        finding,
+                        "confidence",
+                        0.0,
+                    ),
+                    "confidence_label": (
+                        self._format_ratio_as_percentage(
+                            getattr(
+                                finding,
+                                "confidence",
+                                0.0,
+                            )
+                        )
+                    ),
+                    "signals": signals,
+                    "signal_labels": [
+                        self._translate_concealment_signal(
+                            signal
+                        )
+                        for signal in signals
+                    ],
+                    "is_near_white": bool(
+                        getattr(
+                            finding,
+                            "is_near_white",
+                            False,
+                        )
+                    ),
+                    "is_small_text": bool(
+                        getattr(
+                            finding,
+                            "is_small_text",
+                            False,
+                        )
+                    ),
+                    "is_relative_small_text": bool(
+                        getattr(
+                            finding,
+                            "is_relative_small_text",
+                            False,
+                        )
+                    ),
+                    "is_instruction_like": bool(
+                        getattr(
+                            finding,
+                            "is_instruction_like",
+                            False,
+                        )
+                    ),
+                    "coordinates_label": (
+                        self._format_bounding_box(
+                            box
+                        )
+                    ),
+                }
+            )
+
+        tiny_text_evidences = []
+
+        for evidence in getattr(
+            analysis,
+            "tiny_text_evidences",
+            (),
+        ):
+            metadata = getattr(
+                evidence,
+                "metadata",
+                {},
+            ) or {}
+
+            tiny_text_evidences.append(
+                {
+                    "code": getattr(
+                        evidence,
+                        "code",
+                        "tiny_text",
+                    ),
+                    "detector": getattr(
+                        evidence,
+                        "detector",
+                        "tiny_text_detector",
+                    ),
+                    "description": getattr(
+                        evidence,
+                        "description",
+                        "",
+                    ),
+                    "page_number": getattr(
+                        evidence,
+                        "page_number",
+                        None,
+                    ),
+                    "text": (
+                        getattr(
+                            evidence,
+                            "original_excerpt",
+                            "",
+                        )
+                        or getattr(
+                            evidence,
+                            "normalized_excerpt",
+                            "",
+                        )
+                    ),
+                    "font_name": metadata.get(
+                        "font_name"
+                    ),
+                    "font_size": (
+                        self._format_decimal(
+                            metadata.get(
+                                "font_size"
+                            )
+                        )
+                        if metadata.get(
+                            "font_size"
+                        ) is not None
+                        else "Não informado"
+                    ),
+                    "font_color_hex": (
+                        metadata.get(
+                            "font_color"
+                        )
+                        or "Não informada"
+                    ),
+                    "confidence": getattr(
+                        evidence,
+                        "confidence",
+                        0.0,
+                    ),
+                    "confidence_label": (
+                        self._format_ratio_as_percentage(
+                            getattr(
+                                evidence,
+                                "confidence",
+                                0.0,
+                            )
+                        )
+                    ),
+                }
+            )
+
+        highest_confidence = getattr(
+            analysis,
+            "highest_confidence",
+            0.0,
+        )
+
+        return {
+            "has_findings": bool(
+                getattr(
+                    analysis,
+                    "has_findings",
+                    False,
+                )
+            ),
+            "total_findings": int(
+                getattr(
+                    analysis,
+                    "total_findings",
+                    (
+                        len(white_text_findings)
+                        + len(tiny_text_evidences)
+                    ),
+                )
+            ),
+            "white_text_count": int(
+                getattr(
+                    analysis,
+                    "white_text_count",
+                    len(white_text_findings),
+                )
+            ),
+            "tiny_text_count": int(
+                getattr(
+                    analysis,
+                    "tiny_text_count",
+                    len(tiny_text_evidences),
+                )
+            ),
+            "highest_confidence": (
+                highest_confidence
+            ),
+            "highest_confidence_label": (
+                self._format_ratio_as_percentage(
+                    highest_confidence
+                )
+            ),
+            "white_text_findings": (
+                white_text_findings
+            ),
+            "tiny_text_evidences": (
+                tiny_text_evidences
+            ),
+        }
+
+    def _translate_concealment_signal(
+        self,
+        signal: str,
+    ) -> str:
+        labels = {
+            "near_white_font": (
+                "Fonte branca ou quase branca"
+            ),
+            "small_font": (
+                "Fonte pequena"
+            ),
+            "font_smaller_than_page_pattern": (
+                "Fonte muito menor que o padrão da página"
+            ),
+            "instruction_like_text": (
+                "Conteúdo com característica instrucional"
+            ),
+        }
+
+        return labels.get(
+            signal,
+            signal,
+        )
+
+    def _format_bounding_box(
+        self,
+        box: Any,
+    ) -> str:
+        if box is None:
+            return "Não informadas"
+
+        return (
+            "X: "
+            f"{self._format_decimal(getattr(box, 'left', 0.0))}, "
+            "Y: "
+            f"{self._format_decimal(getattr(box, 'top', 0.0))}, "
+            "largura: "
+            f"{self._format_decimal(getattr(box, 'width', 0.0))}, "
+            "altura: "
+            f"{self._format_decimal(getattr(box, 'height', 0.0))}"
+        )
+
     def _build_prompt_injection_evidences(
         self,
         assessment: Any,
@@ -2118,6 +2721,25 @@ class AnalysisViewBuilder:
 
         return (
             f"{number:.1f}%"
+        )
+
+    def _format_location_coordinates(
+        self,
+        *,
+        left: Any,
+        top: Any,
+        width: Any,
+        height: Any,
+    ) -> str:
+        return (
+            "X: "
+            f"{self._format_decimal(left)}, "
+            "Y: "
+            f"{self._format_decimal(top)}, "
+            "largura: "
+            f"{self._format_decimal(width)}, "
+            "altura: "
+            f"{self._format_decimal(height)}"
         )
 
     def _build_extracted_file_url(

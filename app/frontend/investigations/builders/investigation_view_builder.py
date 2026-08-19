@@ -221,6 +221,44 @@ class InvestigationViewBuilder:
             )
         )
 
+        locations = list(
+            analysis.get(
+                "prompt_injection_locations",
+                [],
+            )
+        )
+
+        visual_locations = (
+            self._build_ai_security_visual_locations(
+                locations=locations,
+                evidences=evidences,
+            )
+        )
+
+        located_visual_locations = [
+            location
+            for location
+            in visual_locations
+            if location.get(
+                "located"
+            )
+        ]
+
+        unlocated_visual_locations = [
+            location
+            for location
+            in visual_locations
+            if not location.get(
+                "located"
+            )
+        ]
+
+        primary_visual_location = (
+            located_visual_locations[0]
+            if located_visual_locations
+            else None
+        )
+
         textual_evidences = [
             evidence
             for evidence
@@ -409,10 +447,238 @@ class InvestigationViewBuilder:
                 concealment_indicators
             ),
 
+            "visual_locations": (
+                visual_locations
+            ),
+
+            "located_visual_locations": (
+                located_visual_locations
+            ),
+
+            "unlocated_visual_locations": (
+                unlocated_visual_locations
+            ),
+
+            "visual_location_count": (
+                len(
+                    visual_locations
+                )
+            ),
+
+            "located_visual_location_count": (
+                len(
+                    located_visual_locations
+                )
+            ),
+
+            "unlocated_visual_location_count": (
+                len(
+                    unlocated_visual_locations
+                )
+            ),
+
+            "has_visual_locations": (
+                bool(
+                    located_visual_locations
+                )
+            ),
+
+            "primary_visual_location": (
+                primary_visual_location
+            ),
+
             "evidences": (
                 evidences
             ),
         }
+
+    def _build_ai_security_visual_locations(
+        self,
+        *,
+        locations: list[
+            dict[str, Any]
+        ],
+        evidences: list[
+            dict[str, Any]
+        ],
+    ) -> list[
+        dict[str, Any]
+    ]:
+        """
+        Organiza as localizações visuais produzidas pelo
+        PromptInjectionVisualEvidenceBuilder.
+
+        O evidence_index é 1-based e corresponde à ordem
+        das evidências no PromptInjectionAssessment.
+        """
+
+        result: list[
+            dict[str, Any]
+        ] = []
+
+        for location in locations:
+            evidence_index = location.get(
+                "evidence_index"
+            )
+
+            related_evidence = None
+
+            if (
+                isinstance(
+                    evidence_index,
+                    int,
+                )
+                and evidence_index >= 1
+                and evidence_index
+                <= len(
+                    evidences
+                )
+            ):
+                related_evidence = (
+                    evidences[
+                        evidence_index - 1
+                    ]
+                )
+
+            page_number = location.get(
+                "page_number"
+            )
+
+            matched_content = (
+                location.get(
+                    "matched_content"
+                )
+                or (
+                    related_evidence.get(
+                        "original_excerpt"
+                    )
+                    if related_evidence
+                    else None
+                )
+                or (
+                    related_evidence.get(
+                        "normalized_excerpt"
+                    )
+                    if related_evidence
+                    else None
+                )
+                or ""
+            )
+
+            left = location.get(
+                "left"
+            )
+
+            top = location.get(
+                "top"
+            )
+
+            width = location.get(
+                "width"
+            )
+
+            height = location.get(
+                "height"
+            )
+
+            coordinates_available = all(
+                value is not None
+                for value in (
+                    left,
+                    top,
+                    width,
+                    height,
+                )
+            )
+
+            coordinates_label = (
+                (
+                    f"X {left} · Y {top} · "
+                    f"{width} × {height}"
+                )
+                if coordinates_available
+                else (
+                    "Coordenadas não disponíveis"
+                )
+            )
+
+            result.append(
+                {
+                    **location,
+
+                    "page_label": (
+                        self._format_single_page_label(
+                            page_number
+                        )
+                    ),
+
+                    "coordinates_label": (
+                        coordinates_label
+                    ),
+
+                    "excerpt": (
+                        matched_content
+                    ),
+
+                    "category": (
+                        related_evidence.get(
+                            "category"
+                        )
+                        if related_evidence
+                        else None
+                    ),
+
+                    "category_label": (
+                        related_evidence.get(
+                            "category_label"
+                        )
+                        if related_evidence
+                        else (
+                            "Evidência de segurança para IA"
+                        )
+                    ),
+
+                    "source": (
+                        related_evidence.get(
+                            "source"
+                        )
+                        if related_evidence
+                        else None
+                    ),
+
+                    "source_label": (
+                        related_evidence.get(
+                            "source_label"
+                        )
+                        if related_evidence
+                        else (
+                            "Não informada"
+                        )
+                    ),
+
+                    "evidence_confidence_label": (
+                        related_evidence.get(
+                            "confidence_label"
+                        )
+                        if related_evidence
+                        else None
+                    ),
+
+                    "has_annotated_image": bool(
+                        location.get(
+                            "annotated_image_url"
+                        )
+                    ),
+
+                    "has_source_image": bool(
+                        location.get(
+                            "source_image_url"
+                        )
+                    ),
+                }
+            )
+
+        return result
 
     def _build_ai_security_sources(
         self,
@@ -1616,11 +1882,20 @@ class InvestigationViewBuilder:
         Agrupa os verificadores relacionados
         à interação entre o documento e sistemas de IA.
 
-        Neste momento, o verificador efetivamente executado
-        é o detector textual de Prompt Injection.
+        O status global desta investigação considera duas
+        frentes independentes de análise:
 
-        Os verificadores visuais de ocultação serão
-        incorporados posteriormente.
+        - Prompt Injection;
+        - ocultação visual textual.
+
+        A presença de ocultação visual pode recomendar
+        revisão humana mesmo quando o risco textual de
+        Prompt Injection permanecer classificado como
+        "Nenhum".
+
+        Este builder não altera o score do detector de
+        Prompt Injection e não converte ocultação visual
+        em Prompt Injection.
         """
 
         has_assessment = bool(
@@ -1651,16 +1926,16 @@ class InvestigationViewBuilder:
             )
         )
 
-        evidence_count = int(
+        prompt_evidence_count = int(
             analysis.get(
                 "prompt_injection_evidence_count",
                 0,
             )
         )
 
-        category_count = int(
+        located_visual_count = int(
             analysis.get(
-                "prompt_injection_category_count",
+                "located_prompt_injection_count",
                 0,
             )
         )
@@ -1672,142 +1947,130 @@ class InvestigationViewBuilder:
             )
         ).strip()
 
-        prompt_evidences = list(
+        visual_concealment_count = int(
             analysis.get(
-                "prompt_injection_evidences",
-                [],
+                "visual_concealment_total_count",
+                0,
             )
         )
 
-        corroborating_sources = {
-            evidence.get(
-                "source"
-            )
-            for evidence
-            in prompt_evidences
-            if evidence.get(
-                "source"
-            )
-            in {
-                "native_text",
-                "ocr",
-            }
-        }
-
-        corroborating_source_count = (
-            len(
-                corroborating_sources
+        white_text_count = int(
+            analysis.get(
+                "visual_concealment_white_text_count",
+                0,
             )
         )
 
-        if not has_assessment:
-            status = (
-                InvestigationStatus.NOT_EXECUTED
+        tiny_text_count = int(
+            analysis.get(
+                "visual_concealment_tiny_text_count",
+                0,
             )
+        )
 
-            status_label = (
-                "Verificação não disponível"
+        has_visual_concealment = bool(
+            analysis.get(
+                "has_visual_concealment_findings",
+                False,
             )
+            or visual_concealment_count > 0
+        )
 
+        total_security_evidence_count = (
+            prompt_evidence_count
+            + visual_concealment_count
+        )
+
+        if risk_level in {"high", "critical"}:
+            status = InvestigationStatus.ALERT
+            status_label = "Atenção prioritária"
+
+            if has_visual_concealment:
+                summary = (
+                    "Foram identificados sinais relevantes associados a possível "
+                    "tentativa de direcionamento ou manipulação de sistemas de IA, "
+                    "além de conteúdo textual com características de ocultação visual. "
+                    "Recomenda-se revisão prioritária."
+                )
+            else:
+                summary = assessment_summary or (
+                    "Foram identificados sinais relevantes associados a possível "
+                    "tentativa de direcionamento ou manipulação de sistemas de IA."
+                )
+
+        elif risk_level in {"low", "medium"} or has_visual_concealment:
+            status = InvestigationStatus.ATTENTION
+            status_label = "Revisão recomendada"
+
+            if risk_level == "none" and has_visual_concealment:
+                summary = (
+                    "Nenhum padrão textual foi classificado como Prompt Injection, "
+                    "porém foram identificados conteúdos com características de "
+                    "ocultação visual, como fonte branca ou quase branca e/ou tamanho "
+                    "tipográfico reduzido. Recomenda-se revisão humana."
+                )
+            elif has_visual_concealment:
+                summary = (
+                    "Foram identificados sinais associados a possível Prompt Injection "
+                    "e também achados de ocultação visual textual. Recomenda-se revisão "
+                    "conjunta das evidências."
+                )
+            elif risk_level == "low":
+                summary = assessment_summary or (
+                    "Foi identificado sinal textual de baixa intensidade associado a "
+                    "padrões potenciais de Prompt Injection. Recomenda-se revisão contextual."
+                )
+            else:
+                summary = assessment_summary or (
+                    "Foram identificados padrões textuais compatíveis com possível "
+                    "Prompt Injection. Recomenda-se revisão das evidências."
+                )
+
+        elif not has_assessment:
+            status = InvestigationStatus.NOT_EXECUTED
+            status_label = "Verificação não disponível"
             summary = (
-                "O verificador textual de segurança para "
-                "sistemas de IA não foi disponibilizado "
-                "nesta execução."
+                "O verificador textual de segurança para sistemas de IA não foi "
+                "disponibilizado nesta execução e nenhum achado independente de "
+                "ocultação visual foi registrado."
             )
 
         elif risk_level == "none":
-            status = (
-                InvestigationStatus.CLEAR
-            )
-
-            status_label = (
-                "Nenhum padrão suspeito"
-            )
-
-            summary = (
-                assessment_summary
-                or (
-                    "Nenhum padrão textual associado "
-                    "a possível Prompt Injection foi "
-                    "identificado pelos verificadores "
-                    "executados."
-                )
-            )
-
-        elif risk_level == "low":
-            status = (
-                InvestigationStatus.ATTENTION
-            )
-
-            status_label = (
-                "Sinal de baixa intensidade"
-            )
-
-            summary = (
-                assessment_summary
-                or (
-                    "Foi identificado sinal textual de "
-                    "baixa intensidade associado a padrões "
-                    "potenciais de Prompt Injection. "
-                    "Recomenda-se revisão contextual."
-                )
-            )
-
-        elif risk_level == "medium":
-            status = (
-                InvestigationStatus.ATTENTION
-            )
-
-            status_label = (
-                "Revisão recomendada"
-            )
-
-            summary = (
-                assessment_summary
-                or (
-                    "Foram identificados padrões textuais "
-                    "compatíveis com possível Prompt Injection. "
-                    "Recomenda-se revisão das evidências."
-                )
-            )
-
-        elif risk_level in {
-            "high",
-            "critical",
-        }:
-            status = (
-                InvestigationStatus.ALERT
-            )
-
-            status_label = (
-                "Atenção prioritária"
-            )
-
-            summary = (
-                assessment_summary
-                or (
-                    "Foram identificados sinais relevantes "
-                    "associados a possível tentativa de "
-                    "direcionamento ou manipulação de "
-                    "sistemas de IA."
-                )
+            status = InvestigationStatus.CLEAR
+            status_label = "Nenhum padrão suspeito"
+            summary = assessment_summary or (
+                "Nenhum padrão textual associado a possível Prompt Injection e nenhum "
+                "achado de ocultação visual textual foram identificados pelos "
+                "verificadores executados."
             )
 
         else:
-            status = (
-                InvestigationStatus.ATTENTION
+            status = InvestigationStatus.ATTENTION
+            status_label = "Resultado para revisão"
+            summary = assessment_summary or (
+                "Os verificadores de segurança para IA produziram resultado que requer revisão."
             )
 
-            status_label = (
-                "Resultado para revisão"
-            )
+        concealment_metric_value = str(
+            visual_concealment_count
+        )
 
-            summary = (
-                assessment_summary
-                or (
-                    "O verificador de segurança para IA "
-                    "produziu resultado que requer revisão."
+        if visual_concealment_count > 0:
+            parts = [
+                f"{visual_concealment_count}",
+                f"{white_text_count} branco/quase branco",
+            ]
+
+            if tiny_text_count > 0:
+                parts.append(
+                    f"{tiny_text_count} minúsculo"
                 )
+
+            concealment_metric_value = (
+                parts[0]
+                + " ("
+                + ", ".join(parts[1:])
+                + ")"
             )
 
         return InvestigationCard(
@@ -1818,9 +2081,7 @@ class InvestigationViewBuilder:
             summary=summary,
             metrics=(
                 InvestigationMetric(
-                    label=(
-                        "Risco textual"
-                    ),
+                    label="Risco textual",
                     value=(
                         risk_label
                         if has_assessment
@@ -1836,22 +2097,24 @@ class InvestigationViewBuilder:
                     ),
                 ),
                 InvestigationMetric(
-                    label=(
-                        "Sinais identificados"
-                    ),
+                    label="Ocultação visual",
+                    value=concealment_metric_value,
+                ),
+                InvestigationMetric(
+                    label="Evidências técnicas",
                     value=str(
-                        evidence_count
+                        total_security_evidence_count
                     ),
                 ),
                 InvestigationMetric(
-                    label="Categorias",
+                    label="Áreas de Prompt Injection localizadas",
                     value=str(
-                        category_count
+                        located_visual_count
                     ),
                 ),
             ),
             evidence_count=(
-                evidence_count
+                total_security_evidence_count
             ),
             route=self._build_route(
                 analysis_id=analysis_id,

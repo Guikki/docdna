@@ -1,5 +1,11 @@
-from app.domain.document.adapters.ocr_document_adapter import (
-    OcrDocumentAdapter,
+from app.domain.concealment.services.visual_concealment_analysis_service import (
+    VisualConcealmentAnalysisService,
+)
+from app.domain.concealment.services.visual_concealment_evidence_builder import (
+    VisualConcealmentEvidenceBuilder,
+)
+from app.domain.document.adapters.native_document_adapter import (
+    NativeDocumentAdapter,
 )
 from app.domain.models.analysis_context import AnalysisContext
 from app.domain.models.document import Document
@@ -30,36 +36,88 @@ class AnalysisContextBuilder:
     ) -> AnalysisContext:
         source = document.saved_path
 
-        pdf_info = PdfReader().read(source)
-        native_text = NativeTextReader().read(source)
-
-        ocr_result = OcrReader(
-            language="por",
-        ).read(source)
-
-        ocr = ocr_result.document_ocr
-        ocr_text_boxes = ocr_result.text_boxes
-
-        normalized_document = (
-            OcrDocumentAdapter().adapt(
-                source=source,
-                ocr_result=ocr_result,
-            )
+        pdf_info = PdfReader().read(
+            source
         )
 
-        images = ImageReader().read(source)
-
-        image_fingerprints = (
-            ImageFingerprintProcessor().process(
+        native_text = (
+            NativeTextReader()
+            .read(
                 source
             )
         )
 
-        barcodes = BarcodeReader().read(source)
+        ocr_result = (
+            OcrReader(
+                language="por",
+            )
+            .read(
+                source
+            )
+        )
+
+        ocr = (
+            ocr_result
+            .document_ocr
+        )
+
+        ocr_text_boxes = (
+            ocr_result
+            .text_boxes
+        )
+
+        normalized_document = (
+            NativeDocumentAdapter()
+            .adapt(
+                source=source,
+            )
+        )
+
+        visual_concealment_analysis = (
+            VisualConcealmentAnalysisService()
+            .analyze(
+                normalized_document
+            )
+        )
+
+        visual_concealment_locations = (
+            VisualConcealmentEvidenceBuilder()
+            .build(
+                pdf_path=source,
+                findings=(
+                    visual_concealment_analysis
+                    .white_text_findings
+                ),
+            )
+        )
+
+        images = (
+            ImageReader()
+            .read(
+                source
+            )
+        )
+
+        image_fingerprints = (
+            ImageFingerprintProcessor()
+            .process(
+                source
+            )
+        )
+
+        barcodes = (
+            BarcodeReader()
+            .read(
+                source
+            )
+        )
 
         printed_numeric_lines = (
-            PrintedNumericLineReader().read(
-                native_text=native_text,
+            PrintedNumericLineReader()
+            .read(
+                native_text=(
+                    native_text
+                ),
                 ocr=ocr,
             )
         )
@@ -69,38 +127,91 @@ class AnalysisContextBuilder:
         )
 
         numeric_line_validations = [
-            numeric_line_validator.validate(line)
-            for line in printed_numeric_lines
+            numeric_line_validator
+            .validate(
+                line
+            )
+            for line
+            in printed_numeric_lines
         ]
 
         numeric_line_locations = (
-            NumericLineVisualEvidenceBuilder().build(
+            NumericLineVisualEvidenceBuilder()
+            .build(
                 pdf_path=source,
-                lines=printed_numeric_lines,
-                boxes=ocr_text_boxes,
+                lines=(
+                    printed_numeric_lines
+                ),
+                boxes=(
+                    ocr_text_boxes
+                ),
             )
         )
 
         return AnalysisContext(
-            document_id=document.id,
-            original_filename=document.original_filename,
-            stored_filename=document.stored_filename,
-            saved_path=document.saved_path,
-            extension=document.extension,
-            mime_type=document.mime_type,
-            size_bytes=document.size_bytes,
-            sha256=document.sha256,
-            uploaded_at=document.uploaded_at,
-            status=document.status,
-            pdf_info=pdf_info,
-            native_text=native_text,
+            document_id=(
+                document.id
+            ),
+            original_filename=(
+                document.original_filename
+            ),
+            stored_filename=(
+                document.stored_filename
+            ),
+            saved_path=(
+                document.saved_path
+            ),
+            extension=(
+                document.extension
+            ),
+            mime_type=(
+                document.mime_type
+            ),
+            size_bytes=(
+                document.size_bytes
+            ),
+            sha256=(
+                document.sha256
+            ),
+            uploaded_at=(
+                document.uploaded_at
+            ),
+            status=(
+                document.status
+            ),
+            pdf_info=(
+                pdf_info
+            ),
+            native_text=(
+                native_text
+            ),
             ocr=ocr,
             images=images,
-            image_fingerprints=image_fingerprints,
-            barcodes=barcodes,
-            printed_numeric_lines=printed_numeric_lines,
-            numeric_line_validations=numeric_line_validations,
-            ocr_text_boxes=ocr_text_boxes,
-            numeric_line_locations=numeric_line_locations,
-            normalized_document=normalized_document,
+            image_fingerprints=(
+                image_fingerprints
+            ),
+            barcodes=(
+                barcodes
+            ),
+            printed_numeric_lines=(
+                printed_numeric_lines
+            ),
+            numeric_line_validations=(
+                numeric_line_validations
+            ),
+            ocr_text_boxes=(
+                ocr_text_boxes
+            ),
+            numeric_line_locations=(
+                numeric_line_locations
+            ),
+            normalized_document=(
+                normalized_document
+            ),
+            visual_concealment_analysis=(
+                visual_concealment_analysis
+            ),
+            visual_concealment_locations=(
+                visual_concealment_locations
+            ),
         )

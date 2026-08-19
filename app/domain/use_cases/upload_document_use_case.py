@@ -17,6 +17,9 @@ from app.domain.models.document import Document
 from app.domain.prompt_injection.services.prompt_injection_analysis_service import (
     PromptInjectionAnalysisService,
 )
+from app.domain.prompt_injection.services.prompt_injection_visual_evidence_builder import (
+    PromptInjectionVisualEvidenceBuilder,
+)
 from app.domain.shared.enums import DocumentStatus
 from app.utils.hash_utils import calculate_sha256
 
@@ -30,7 +33,9 @@ class UploadDocumentUseCase:
             file
         )
 
-        upload_dir = settings.UPLOADS_DIR
+        upload_dir = (
+            settings.UPLOADS_DIR
+        )
 
         upload_dir.mkdir(
             parents=True,
@@ -106,6 +111,10 @@ class UploadDocumentUseCase:
             PromptInjectionAnalysisService()
         )
 
+        prompt_injection_visual_builder = (
+            PromptInjectionVisualEvidenceBuilder()
+        )
+
         barcode_presence_evidences = (
             barcode_presence_detector
             .analyze(
@@ -145,13 +154,32 @@ class UploadDocumentUseCase:
             )
         )
 
+        prompt_injection_locations = (
+            self._build_prompt_injection_locations(
+                pdf_path=str(
+                    saved_path
+                ),
+                analysis_context=(
+                    analysis_context
+                ),
+                assessment=(
+                    prompt_injection_assessment
+                ),
+                visual_builder=(
+                    prompt_injection_visual_builder
+                ),
+            )
+        )
+
         evidences = [
             *barcode_presence_evidences,
             *barcode_comparison_evidences,
         ]
 
         return {
-            "id": document.id,
+            "id": (
+                document.id
+            ),
 
             "original_filename": (
                 document.original_filename
@@ -215,6 +243,16 @@ class UploadDocumentUseCase:
                 .normalized_document
             ),
 
+            "visual_concealment_analysis": (
+                analysis_context
+                .visual_concealment_analysis
+            ),
+
+            "visual_concealment_locations": (
+                analysis_context
+                .visual_concealment_locations
+            ),
+
             "barcodes": (
                 analysis_context.barcodes
             ),
@@ -242,6 +280,10 @@ class UploadDocumentUseCase:
                 prompt_injection_assessment
             ),
 
+            "prompt_injection_locations": (
+                prompt_injection_locations
+            ),
+
             "evidences": (
                 evidences
             ),
@@ -252,6 +294,82 @@ class UploadDocumentUseCase:
                 "com sucesso."
             ),
         }
+
+    def _build_prompt_injection_locations(
+        self,
+        *,
+        pdf_path: str,
+        analysis_context,
+        assessment,
+        visual_builder: (
+            PromptInjectionVisualEvidenceBuilder
+        ),
+    ) -> list:
+        """
+        Produz localização visual das evidências de
+        Prompt Injection utilizando estratégia native-first.
+
+        O documento normalizado fornece os TextSpan nativos,
+        com página, bounding box e metadados tipográficos.
+        As caixas OCR permanecem disponíveis como fallback
+        quando a localização nativa não for possível.
+
+        Caso não existam evidências, retorna uma coleção
+        vazia. Se não houver texto nativo nem caixas OCR,
+        também não há material suficiente para localização.
+        """
+
+        if assessment is None:
+            return []
+
+        assessment_evidences = getattr(
+            assessment,
+            "evidences",
+            None,
+        )
+
+        if not assessment_evidences:
+            return []
+
+        text_boxes = getattr(
+            analysis_context,
+            "ocr_text_boxes",
+            None,
+        )
+
+        normalized_document = getattr(
+            analysis_context,
+            "normalized_document",
+            None,
+        )
+
+        if text_boxes is None:
+            text_boxes = []
+
+        if not isinstance(
+            text_boxes,
+            list,
+        ):
+            return []
+
+        if (
+            normalized_document is None
+            and not text_boxes
+        ):
+            return []
+
+        return (
+            visual_builder.build(
+                pdf_path=pdf_path,
+                evidences=list(
+                    assessment_evidences
+                ),
+                boxes=text_boxes,
+                normalized_document=(
+                    normalized_document
+                ),
+            )
+        )
 
     def _validate_pdf(
         self,

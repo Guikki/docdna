@@ -1809,6 +1809,397 @@
 
         </section>
 
+        {# ============================================================
+           OCULTAÇÃO VISUAL TEXTUAL
+           ============================================================ #}
+
+        <section class="card investigation-section">
+
+            <div class="investigation-section-heading">
+                <div>
+                    <p class="section-eyebrow">
+                        Ocultação visual
+                    </p>
+
+                    <h2 class="section-title">
+                        Conteúdo textual potencialmente oculto
+                    </h2>
+                </div>
+            </div>
+
+            <div class="investigation-capability-note">
+                <strong>
+                    Verificação independente de Prompt Injection
+                </strong>
+
+                <p>
+                    Esta etapa procura propriedades visuais capazes de
+                    tornar texto pouco perceptível ao usuário, como fonte
+                    branca ou quase branca e tamanho tipográfico muito
+                    reduzido. O apontamento não declara fraude e não exige
+                    que o conteúdo seja classificado como Prompt Injection.
+                </p>
+            </div>
+
+            {% if analysis.has_visual_concealment_findings %}
+
+                <dl class="investigation-data-table">
+
+                    <div>
+                        <dt>
+                            Achados técnicos
+                        </dt>
+
+                        <dd>
+                            {{ analysis.visual_concealment_total_count }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Texto branco ou quase branco
+                        </dt>
+
+                        <dd>
+                            {{ analysis.visual_concealment_white_text_count }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Texto abaixo do limite de fonte minúscula
+                        </dt>
+
+                        <dd>
+                            {{ analysis.visual_concealment_tiny_text_count }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Maior confiança técnica
+                        </dt>
+
+                        <dd>
+                            {{
+                                analysis
+                                .visual_concealment_highest_confidence_label
+                            }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Regiões visualmente localizadas
+                        </dt>
+
+                        <dd>
+                            {{
+                                analysis
+                                .located_visual_concealment_count
+                            }}
+                        </dd>
+                    </div>
+
+                </dl>
+
+                {% if analysis.visual_concealment_white_text_findings %}
+
+                    <div class="investigation-detail-list">
+
+                        {% for finding in analysis.visual_concealment_white_text_findings %}
+
+                            <details class="investigation-detail-item" open>
+
+                                <summary>
+                                    <span>
+                                        Texto branco/quase branco
+                                        · página
+                                        {{ finding.page_number or "não informada" }}
+                                    </span>
+
+                                    <small>
+                                        Confiança
+                                        {{ finding.confidence_label }}
+                                    </small>
+                                </summary>
+
+                                <div class="investigation-detail-item__content">
+
+                                    <div class="investigation-technical-note">
+                                        <strong>
+                                            Conteúdo identificado
+                                        </strong>
+
+                                        <span class="investigation-break-value">
+                                            “{{ finding.text }}”
+                                        </span>
+                                    </div>
+
+                                    <dl
+                                        class="
+                                            investigation-data-table
+                                            investigation-data-table--compact
+                                        "
+                                    >
+
+                                        <div>
+                                            <dt>Fonte</dt>
+                                            <dd>{{ finding.font_name }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Tamanho</dt>
+                                            <dd>{{ finding.font_size }} pt</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Cor</dt>
+                                            <dd>{{ finding.font_color_hex }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Detector</dt>
+                                            <dd>{{ finding.detector }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Coordenadas</dt>
+                                            <dd>{{ finding.coordinates_label }}</dd>
+                                        </div>
+
+                                    </dl>
+
+                                    {% if finding.signal_labels %}
+
+                                        <div class="investigation-static-list">
+
+                                            {% for signal in finding.signal_labels %}
+
+                                                <article class="investigation-static-item">
+                                                    <strong>
+                                                        {{ signal }}
+                                                    </strong>
+                                                </article>
+
+                                            {% endfor %}
+
+                                        </div>
+
+                                    {% endif %}
+
+                                    {% set location = finding.visual_location %}
+
+                                    {% if location and location.located %}
+
+                                        {% if location.annotated_image_url %}
+
+                                            <div class="investigation-technical-note">
+
+                                                <strong>
+                                                    Região destacada no documento
+                                                </strong>
+
+                                                <span>
+                                                    O retângulo indica a região textual
+                                                    que originou este achado técnico.
+                                                </span>
+
+                                                <a
+                                                    href="{{ location.annotated_image_url }}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <img
+                                                        src="{{ location.annotated_image_url }}"
+                                                        alt="Página {{ location.page_number }} com possível ocultação visual destacada"
+                                                        loading="lazy"
+                                                        style="
+                                                            display: block;
+                                                            width: 100%;
+                                                            max-width: 1100px;
+                                                            height: auto;
+                                                            margin-top: 12px;
+                                                            border-radius: 10px;
+                                                        "
+                                                    >
+                                                </a>
+
+                                            </div>
+
+                                        {% endif %}
+
+                                        <dl
+                                            class="
+                                                investigation-data-table
+                                                investigation-data-table--compact
+                                            "
+                                        >
+
+                                            <div>
+                                                <dt>
+                                                    Página localizada
+                                                </dt>
+
+                                                <dd>
+                                                    {{ location.page_number }}
+                                                </dd>
+                                            </div>
+
+                                            <div>
+                                                <dt>
+                                                    Coordenadas nativas
+                                                </dt>
+
+                                                <dd>
+                                                    {{ location.coordinates_label }}
+                                                </dd>
+                                            </div>
+
+                                            <div>
+                                                <dt>
+                                                    Método de localização
+                                                </dt>
+
+                                                <dd>
+                                                    BoundingBox nativo do PDF
+                                                </dd>
+                                            </div>
+
+                                        </dl>
+
+                                        <div class="investigation-location__actions">
+
+                                            {% if location.annotated_image_url %}
+
+                                                <a
+                                                    class="btn btn-secondary"
+                                                    href="{{ location.annotated_image_url }}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    Abrir região destacada
+                                                </a>
+
+                                            {% endif %}
+
+                                            {% if location.source_image_url %}
+
+                                                <a
+                                                    class="btn btn-secondary"
+                                                    href="{{ location.source_image_url }}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    Abrir página original
+                                                </a>
+
+                                            {% endif %}
+
+                                        </div>
+
+                                    {% endif %}
+
+                                </div>
+
+                            </details>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% endif %}
+
+                {% if analysis.visual_concealment_tiny_text_evidences %}
+
+                    <div class="investigation-detail-list">
+
+                        {% for finding in analysis.visual_concealment_tiny_text_evidences %}
+
+                            <details class="investigation-detail-item">
+
+                                <summary>
+                                    <span>
+                                        Fonte minúscula
+                                        · página
+                                        {{ finding.page_number or "não informada" }}
+                                    </span>
+
+                                    <small>
+                                        Confiança
+                                        {{ finding.confidence_label }}
+                                    </small>
+                                </summary>
+
+                                <div class="investigation-detail-item__content">
+
+                                    <div class="investigation-technical-note">
+                                        <strong>
+                                            Conteúdo identificado
+                                        </strong>
+
+                                        <span class="investigation-break-value">
+                                            “{{ finding.text }}”
+                                        </span>
+                                    </div>
+
+                                    <dl
+                                        class="
+                                            investigation-data-table
+                                            investigation-data-table--compact
+                                        "
+                                    >
+
+                                        <div>
+                                            <dt>Fonte</dt>
+                                            <dd>{{ finding.font_name or "Não informada" }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Tamanho</dt>
+                                            <dd>{{ finding.font_size }} pt</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Cor</dt>
+                                            <dd>{{ finding.font_color_hex }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Detector</dt>
+                                            <dd>{{ finding.detector }}</dd>
+                                        </div>
+
+                                    </dl>
+
+                                </div>
+
+                            </details>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% endif %}
+
+            {% else %}
+
+                <div class="investigation-empty-state">
+                    <strong>
+                        Nenhum indício de ocultação visual textual
+                    </strong>
+
+                    <p>
+                        Os verificadores executados nesta etapa não
+                        identificaram texto branco/quase branco nem fonte
+                        abaixo do limite técnico configurado.
+                    </p>
+                </div>
+
+            {% endif %}
+
+        </section>
+
 
         {# ============================================================
            RESUMO INVESTIGATIVO
@@ -1901,6 +2292,16 @@
 
                         <dd>
                             {{ detail.independent_source_count }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Áreas visualmente localizadas
+                        </dt>
+
+                        <dd>
+                            {{ detail.located_visual_location_count }}
                         </dd>
                     </div>
 
@@ -2241,6 +2642,380 @@
                 </section>
 
             {% endif %}
+
+
+            {# ========================================================
+               LOCALIZAÇÃO VISUAL DAS EVIDÊNCIAS
+               ======================================================== #}
+
+            <section class="card investigation-section">
+
+                <div class="investigation-section-heading">
+
+                    <div>
+                        <p class="section-eyebrow">
+                            Evidência visual
+                        </p>
+
+                        <h2 class="section-title">
+                            Onde o conteúdo suspeito foi localizado
+                        </h2>
+                    </div>
+
+                </div>
+
+                <div class="investigation-capability-note">
+
+                    <strong>
+                        Como interpretar esta visualização
+                    </strong>
+
+                    <p>
+                        O DocDNA correlaciona o conteúdo associado às
+                        evidências de Prompt Injection com as caixas
+                        produzidas pelo OCR. Quando a correlação é
+                        possível, a região correspondente é destacada
+                        sobre a própria página do documento.
+                    </p>
+
+                    <p>
+                        A marcação visual indica onde o sistema encontrou
+                        conteúdo compatível com a evidência. Ela não
+                        confirma, isoladamente, que o trecho represente
+                        uma tentativa real de Prompt Injection.
+                    </p>
+
+                </div>
+
+                {% if detail.has_visual_locations %}
+
+                    <div class="investigation-location-list">
+
+                        {% for location in detail.located_visual_locations %}
+
+                            <article
+                                class="
+                                    investigation-location
+                                    investigation-location--located
+                                "
+                            >
+
+                                <header class="investigation-location__header">
+
+                                    <strong>
+                                        Evidência
+                                        {{ location.evidence_index }}
+                                        ·
+                                        {{ location.category_label }}
+                                    </strong>
+
+                                    <span>
+                                        Localizada
+                                    </span>
+
+                                </header>
+
+                                <p>
+                                    {{ location.message }}
+                                </p>
+
+                                {% if location.excerpt %}
+
+                                    <div class="investigation-technical-note">
+
+                                        <strong>
+                                            Trecho associado à região
+                                        </strong>
+
+                                        <span class="investigation-break-value">
+                                            “{{ location.excerpt }}”
+                                        </span>
+
+                                    </div>
+
+                                {% endif %}
+
+                                <dl
+                                    class="
+                                        investigation-data-table
+                                        investigation-data-table--compact
+                                    "
+                                >
+
+                                    <div>
+                                        <dt>
+                                            Página
+                                        </dt>
+
+                                        <dd>
+                                            {{ location.page_label }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Origem da evidência
+                                        </dt>
+
+                                        <dd>
+                                            {{
+                                                location.source_label
+                                                or "Não informada"
+                                            }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Detector
+                                        </dt>
+
+                                        <dd>
+                                            {{ location.detector }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Confiança OCR da região
+                                        </dt>
+
+                                        <dd>
+                                            {{
+                                                location.confidence_label
+                                                or "Não informada"
+                                            }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Confiança da evidência
+                                        </dt>
+
+                                        <dd>
+                                            {{
+                                                location.evidence_confidence_label
+                                                or "Não informada"
+                                            }}
+                                        </dd>
+                                    </div>
+
+                                    <div>
+                                        <dt>
+                                            Coordenadas
+                                        </dt>
+
+                                        <dd>
+                                            {{ location.coordinates_label }}
+                                        </dd>
+                                    </div>
+
+                                </dl>
+
+                                {% if location.annotated_image_url %}
+
+                                    <div class="investigation-technical-note">
+
+                                        <strong>
+                                            Região destacada no documento
+                                        </strong>
+
+                                        <a
+                                            href="{{ location.annotated_image_url }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <img
+                                                src="{{ location.annotated_image_url }}"
+                                                alt="Página {{ location.page_number }} com a evidência de Prompt Injection destacada"
+                                                loading="lazy"
+                                                style="
+                                                    display: block;
+                                                    width: 100%;
+                                                    max-width: 1100px;
+                                                    height: auto;
+                                                    margin-top: 12px;
+                                                    border-radius: 10px;
+                                                "
+                                            >
+                                        </a>
+
+                                    </div>
+
+                                {% endif %}
+
+                                <div class="investigation-location__actions">
+
+                                    {% if location.annotated_image_url %}
+
+                                        <a
+                                            class="btn btn-secondary"
+                                            href="{{ location.annotated_image_url }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            Abrir região destacada
+                                        </a>
+
+                                    {% endif %}
+
+                                    {% if location.source_image_url %}
+
+                                        <a
+                                            class="btn btn-secondary"
+                                            href="{{ location.source_image_url }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            Abrir página original
+                                        </a>
+
+                                    {% endif %}
+
+                                </div>
+
+                            </article>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% if detail.unlocated_visual_location_count > 0 %}
+
+                        <details class="investigation-detail-item">
+
+                            <summary>
+
+                                <span>
+                                    Evidências sem localização visual confirmada
+                                </span>
+
+                                <small>
+                                    {{ detail.unlocated_visual_location_count }}
+                                    item(ns)
+                                </small>
+
+                            </summary>
+
+                            <div class="investigation-detail-item__content">
+
+                                <div class="investigation-static-list">
+
+                                    {% for location in detail.unlocated_visual_locations %}
+
+                                        <article class="investigation-static-item">
+
+                                            <strong>
+                                                Evidência
+                                                {{ location.evidence_index }}
+                                                ·
+                                                {{ location.category_label }}
+                                            </strong>
+
+                                            <span>
+                                                {{ location.message }}
+                                            </span>
+
+                                            {% if location.excerpt %}
+
+                                                <small class="investigation-break-value">
+                                                    {{ location.excerpt }}
+                                                </small>
+
+                                            {% endif %}
+
+                                        </article>
+
+                                    {% endfor %}
+
+                                </div>
+
+                            </div>
+
+                        </details>
+
+                    {% endif %}
+
+                {% elif detail.visual_location_count > 0 %}
+
+                    <div class="investigation-empty-state">
+
+                        <strong>
+                            Nenhuma região pôde ser confirmada visualmente
+                        </strong>
+
+                        <p>
+                            Existem evidências de segurança para IA, mas a
+                            correlação com as caixas produzidas pelo OCR não
+                            foi suficiente para apontar uma região específica
+                            do documento.
+                        </p>
+
+                    </div>
+
+                    <details class="investigation-detail-item">
+
+                        <summary>
+
+                            <span>
+                                Ver tentativas de localização
+                            </span>
+
+                            <small>
+                                {{ detail.visual_location_count }}
+                                item(ns)
+                            </small>
+
+                        </summary>
+
+                        <div class="investigation-detail-item__content">
+
+                            <div class="investigation-static-list">
+
+                                {% for location in detail.visual_locations %}
+
+                                    <article class="investigation-static-item">
+
+                                        <strong>
+                                            Evidência
+                                            {{ location.evidence_index }}
+                                            ·
+                                            {{ location.category_label }}
+                                        </strong>
+
+                                        <span>
+                                            {{ location.message }}
+                                        </span>
+
+                                    </article>
+
+                                {% endfor %}
+
+                            </div>
+
+                        </div>
+
+                    </details>
+
+                {% else %}
+
+                    <div class="investigation-empty-state">
+
+                        <strong>
+                            Localização visual não disponível
+                        </strong>
+
+                        <p>
+                            Nenhuma tentativa de localização visual foi
+                            disponibilizada para as evidências desta análise.
+                        </p>
+
+                    </div>
+
+                {% endif %}
+
+            </section>
 
 
             {# ========================================================
