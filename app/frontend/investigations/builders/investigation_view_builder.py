@@ -94,12 +94,18 @@ class InvestigationViewBuilder:
             ),
         )
 
+        ordered_cards = (
+            self._sort_cards_by_status(
+                cards
+            )
+        )
+
         return [
             self._serialize_card(
                 card
             )
             for card
-            in cards
+            in ordered_cards
         ]
 
     def build_detail(
@@ -2282,6 +2288,46 @@ class InvestigationViewBuilder:
                 analysis_id=analysis_id,
                 slug="evidence",
             ),
+        )
+
+    @staticmethod
+    def _sort_cards_by_status(
+            cards: tuple[
+                InvestigationCard,
+                ...,
+            ],
+    ) -> tuple[
+        InvestigationCard,
+        ...,
+    ]:
+        """
+        Ordena os cards por prioridade analítica de apresentação.
+
+        Precedência:
+
+            ALERT
+            ATTENTION
+            CLEAR
+            NOT_EXECUTED
+
+        """
+
+        priority = {
+            InvestigationStatus.ALERT: 0,
+            InvestigationStatus.ATTENTION: 1,
+            InvestigationStatus.CLEAR: 2,
+            InvestigationStatus.NOT_EXECUTED: 3,
+        }
+
+        return tuple(
+            sorted(
+                cards,
+                key=lambda card: (
+                    priority[
+                        card.status
+                    ]
+                ),
+            )
         )
 
     @staticmethod

@@ -11,8 +11,14 @@ from app.config.settings import settings
 from app.domain.services.batch_cross_validation_service import (
     BatchCrossValidationService,
 )
+from app.domain.services.batch_finding_aggregation_service import (
+    BatchFindingAggregationService,
+)
 from app.frontend.investigations.builders.investigation_view_builder import (
     InvestigationViewBuilder,
+)
+from app.frontend.investigations.services.investigation_status_resolver import (
+    InvestigationStatusResolver,
 )
 from app.frontend.view_models.analysis_view_builder import (
     AnalysisViewBuilder,
@@ -86,6 +92,9 @@ analysis_view_builder = (
 investigation_view_builder = (
     InvestigationViewBuilder()
 )
+investigation_status_resolver = (
+    InvestigationStatusResolver()
+)
 
 
 # Repositório e builders da análise em lote
@@ -99,6 +108,10 @@ batch_view_builder = (
 
 batch_cross_validation_service = (
     BatchCrossValidationService()
+)
+
+batch_finding_aggregation_service = (
+    BatchFindingAggregationService()
 )
 
 evidence_report_view_builder = (
@@ -403,9 +416,74 @@ def batch_result(
             ),
         )
 
+    batch_analyses = []
+
+    document_analytical_statuses = {}
+
+    for batch_document in batch.documents:
+        analysis_id = (
+            batch_document.analysis_id
+        )
+
+        if analysis_id is None:
+            continue
+
+        analysis_data = (
+            analysis_repository.get_by_id(
+                analysis_id
+            )
+        )
+
+        if analysis_data is None:
+            continue
+
+        batch_analyses.append(
+            analysis_data
+        )
+
+        analysis_view = (
+            analysis_view_builder.build(
+                analysis_data
+            )
+        )
+
+        investigation_cards = (
+            investigation_view_builder
+            .build_cards(
+                analysis_id=analysis_id,
+                analysis_view=analysis_view,
+            )
+        )
+
+        analytical_status = (
+            investigation_status_resolver
+            .resolve(
+                investigation_cards
+            )
+        )
+
+        document_analytical_statuses[
+            str(analysis_id)
+        ] = analytical_status
+
+    individual_finding_summaries = (
+        batch_finding_aggregation_service
+        .aggregate(
+            batch_analyses
+        )
+    )
+
     batch_view = (
         batch_view_builder.build(
-            batch
+            batch=batch,
+
+            finding_summaries=(
+                individual_finding_summaries
+            ),
+
+            document_analytical_statuses=(
+                document_analytical_statuses
+            ),
         )
     )
 

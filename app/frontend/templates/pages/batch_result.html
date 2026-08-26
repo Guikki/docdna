@@ -3,7 +3,7 @@
 {% block styles %}
 <link
     rel="stylesheet"
-    href="{{ url_for('static', path='/css/pages/batch_result.css') }}?v=20260716-1"
+    href="{{ url_for('static', path='/css/pages/batch_result.css') }}?v=20260825-1"
 >
 {% endblock %}
 
@@ -22,7 +22,7 @@
 
             <p class="batch-header__subtitle">
                 Consulte o resultado consolidado, examine os apontamentos
-                comparativos, exporte os dados e abra cada análise individual.
+                individuais e comparativos e abra cada análise detalhada.
             </p>
         </div>
 
@@ -43,13 +43,14 @@
         </div>
     </section>
 
+
     <section
         class="batch-summary-grid"
         aria-label="Resumo do lote"
     >
         <article class="card batch-summary-card">
             <span class="batch-summary-card__label">
-                Status
+                Processamento
             </span>
 
             <strong
@@ -59,6 +60,28 @@
                 "
             >
                 {{ batch.status_label }}
+            </strong>
+        </article>
+
+        <article
+            class="
+                card
+                batch-summary-card
+                batch-summary-card--analytical
+                batch-summary-card--{{ batch.analytical_status }}
+            "
+        >
+            <span class="batch-summary-card__label">
+                Situação analítica
+            </span>
+
+            <strong
+                class="
+                    analytical-status
+                    analytical-status--{{ batch.analytical_status }}
+                "
+            >
+                {{ batch.analytical_status_label }}
             </strong>
         </article>
 
@@ -92,6 +115,108 @@
             </strong>
         </article>
     </section>
+
+
+    <section
+        class="
+            card
+            analytical-overview
+            analytical-overview--{{ batch.analytical_status }}
+        "
+        aria-labelledby="analytical-overview-title"
+    >
+        <div class="analytical-overview__header">
+            <div>
+                <p class="section-eyebrow">
+                    Priorização de revisão
+                </p>
+
+                <h2
+                    id="analytical-overview-title"
+                    class="section-title"
+                >
+                    Situação analítica dos documentos
+                </h2>
+
+                <p class="analytical-overview__description">
+                    Esta classificação organiza os documentos conforme os
+                    apontamentos produzidos pelos verificadores executados.
+                    Ela não representa declaração de fraude ou autenticidade.
+                </p>
+            </div>
+
+            <span
+                class="
+                    analytical-overview__badge
+                    analytical-overview__badge--{{ batch.analytical_status }}
+                "
+            >
+                {{ batch.analytical_status_label }}
+            </span>
+        </div>
+
+        <div
+            class="analytical-overview__stats"
+            aria-label="Distribuição analítica dos documentos"
+        >
+            <article class="analytical-stat analytical-stat--alert">
+                <span>
+                    Alta prioridade
+                </span>
+
+                <strong>
+                    {{ batch.analytical_summary.alert_documents }}
+                </strong>
+
+                <small>
+                    Documento(s) com alerta
+                </small>
+            </article>
+
+            <article class="analytical-stat analytical-stat--attention">
+                <span>
+                    Revisão recomendada
+                </span>
+
+                <strong>
+                    {{ batch.analytical_summary.attention_documents }}
+                </strong>
+
+                <small>
+                    Documento(s) para revisão
+                </small>
+            </article>
+
+            <article class="analytical-stat analytical-stat--clear">
+                <span>
+                    Sem apontamentos
+                </span>
+
+                <strong>
+                    {{ batch.analytical_summary.clear_documents }}
+                </strong>
+
+                <small>
+                    Documento(s) classificados
+                </small>
+            </article>
+
+            <article class="analytical-stat analytical-stat--not-executed">
+                <span>
+                    Análise incompleta
+                </span>
+
+                <strong>
+                    {{ batch.analytical_summary.not_executed_documents }}
+                </strong>
+
+                <small>
+                    Documento(s) sem classificação completa
+                </small>
+            </article>
+        </div>
+    </section>
+
 
     <section class="card batch-progress-section">
         <div class="batch-progress-section__header">
@@ -127,6 +252,122 @@
             ></div>
         </div>
     </section>
+
+
+    <section
+        class="card evidence-section"
+        aria-labelledby="individual-findings-title"
+    >
+        <div class="evidence-section__header">
+            <div class="evidence-section__header-content">
+                <p class="section-eyebrow">
+                    Panorama dos documentos
+                </p>
+
+                <h2
+                    id="individual-findings-title"
+                    class="section-title"
+                >
+                    Achados individuais do lote
+                </h2>
+            </div>
+        </div>
+
+        {% if batch.has_individual_findings %}
+
+            <div class="evidence-dashboard">
+
+                <div class="evidence-dashboard__message">
+                    <h3>
+                        Frequência dos apontamentos
+                    </h3>
+
+                    <p>
+                        Os indicadores mostram quantos documentos apresentaram
+                        cada tipo de achado e sua prevalência dentro do conjunto
+                        efetivamente analisado.
+                    </p>
+                </div>
+
+                <div class="finding-summary-list">
+
+                    {% for finding in batch.individual_findings %}
+
+                        <article class="finding-summary-card">
+
+                            <div class="finding-summary-card__main">
+
+                                <div
+                                    class="finding-summary-card__icon"
+                                    aria-hidden="true"
+                                >
+                                    !
+                                </div>
+
+                                <div class="finding-summary-card__content">
+
+                                    <strong>
+                                        {{ finding.title }}
+                                    </strong>
+
+                                    <span>
+                                        {{ finding.affected_documents }}
+                                        de
+                                        {{ finding.total_documents }}
+                                        documento(s) afetado(s)
+                                    </span>
+
+                                    <p>
+                                        {{ finding.occurrence_count }}
+                                        ocorrência(s) técnica(s) identificada(s).
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                            <div class="finding-summary-card__prevalence">
+
+                                <strong>
+                                    {{ finding.fraction_label }}
+                                </strong>
+
+                                <span>
+                                    {{ finding.prevalence_label }}
+                                </span>
+
+                                <small>
+                                    prevalência
+                                </small>
+
+                            </div>
+
+                        </article>
+
+                    {% endfor %}
+
+                </div>
+
+            </div>
+
+        {% else %}
+
+            <div class="evidence-empty-state">
+
+                <strong>
+                    Nenhum achado individual identificado
+                </strong>
+
+                <p>
+                    Os documentos analisados não apresentaram apontamentos
+                    individuais consolidados nesta etapa da análise.
+                </p>
+
+            </div>
+
+        {% endif %}
+    </section>
+
 
     <section
         class="card evidence-section"
@@ -236,6 +477,7 @@
         {% endif %}
     </section>
 
+
     <section class="batch-content-grid">
 
         <aside class="card batch-details">
@@ -271,6 +513,16 @@
                 </div>
 
                 <div>
+                    <dt>Status operacional</dt>
+                    <dd>{{ batch.status_label }}</dd>
+                </div>
+
+                <div>
+                    <dt>Situação analítica</dt>
+                    <dd>{{ batch.analytical_status_label }}</dd>
+                </div>
+
+                <div>
                     <dt>Pendentes</dt>
                     <dd>{{ batch.result.pending_documents }}</dd>
                 </div>
@@ -281,6 +533,7 @@
                 </div>
             </dl>
         </aside>
+
 
         <section class="card batch-documents-section">
             <div class="batch-documents-section__header">
@@ -293,31 +546,58 @@
                         {{ batch.result.total_documents }}
                         documento(s)
                     </h2>
+
+                    <p class="batch-documents-section__description">
+                        Os documentos são exibidos por prioridade analítica:
+                        alta prioridade, revisão recomendada, sem apontamentos
+                        e análise incompleta.
+                    </p>
                 </div>
             </div>
 
             <div class="batch-document-list">
                 {% for document in batch.documents %}
+
                     <article
                         class="
                             batch-document
-                            batch-document--{{ document.status }}
+                            batch-document--operational-{{ document.status }}
+                            batch-document--analytical-{{ document.analytical_status }}
                         "
                     >
                         <div class="batch-document__main">
+
                             <div
-                                class="batch-document__icon"
+                                class="
+                                    batch-document__icon
+                                    batch-document__icon--{{ document.analytical_status }}
+                                "
                                 aria-hidden="true"
                             >
                                 PDF
                             </div>
 
                             <div class="batch-document__content">
-                                <strong>
-                                    {{ document.original_filename }}
-                                </strong>
 
-                                <span>
+                                <div class="batch-document__heading">
+
+                                    <strong>
+                                        {{ document.original_filename }}
+                                    </strong>
+
+                                    <span
+                                        class="
+                                            analytical-badge
+                                            analytical-badge--{{ document.analytical_status }}
+                                        "
+                                    >
+                                        {{ document.analytical_status_label }}
+                                    </span>
+
+                                </div>
+
+                                <span class="batch-document__operational-status">
+                                    Processamento:
                                     {{ document.status_label }}
                                 </span>
 
@@ -326,6 +606,7 @@
                                         {{ document.error_message }}
                                     </p>
                                 {% endif %}
+
                             </div>
                         </div>
 
@@ -346,6 +627,7 @@
                             {% endif %}
                         </div>
                     </article>
+
                 {% endfor %}
             </div>
         </section>
