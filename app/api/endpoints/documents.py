@@ -80,15 +80,15 @@ def upload_document(
 @router.post(
     "/batch-upload",
     response_model=BatchResponse,
-    summary="Enviar múltiplos documentos",
+    summary="Enviar um ou mais documentos",
 )
 def upload_document_batch(
     files: Annotated[
         list[UploadFile],
         File(
             description=(
-                "Selecione dois ou mais documentos PDF "
-                "para processamento em lote."
+                "Selecione um ou mais documentos PDF "
+                "para processamento."
             ),
         ),
     ],

@@ -1,8 +1,14 @@
+import json
+
 from typing import Any
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.table import (
+    Table,
+    TableStyleInfo,
+)
 
 from app.config.settings import settings
 from app.domain.models.batch import Batch
@@ -16,26 +22,72 @@ from app.domain.services.batch_cross_validation_service import (
 from app.infrastructure.repositories.analysis_memory_repository import (
     AnalysisMemoryRepository,
 )
+from app.domain.services.batch_finding_aggregation_service import (
+    BatchFindingAggregationService,
+)
+from app.frontend.exports.batch_export_view_builder import (
+    BatchExportViewBuilder,
+)
+from app.frontend.investigations.builders.investigation_view_builder import (
+    InvestigationViewBuilder,
+)
+from app.frontend.investigations.services.investigation_status_resolver import (
+    InvestigationStatusResolver,
+)
+from app.frontend.view_models.analysis_view_builder import (
+    AnalysisViewBuilder,
+)
 
 
 class BatchExcelExportService:
 
-    SUMMARY_SHEET_NAME = "Resumo do lote"
-    DOCUMENTS_SHEET_NAME = "Documentos"
-    EVIDENCES_SHEET_NAME = "Evidências"
-    COMPARISONS_SHEET_NAME = "Comparações do lote"
+    SUMMARY_SHEET_NAME = "00 - Resumo"
+    DOCUMENTS_SHEET_NAME = "01 - Documentos"
+    FINDINGS_SHEET_NAME = "02 - Achados por tipo"
+    EVIDENCES_SHEET_NAME = "03 - Evidências"
+    FINANCIAL_SHEET_NAME = "04 - Financeiro"
+    PROMPT_INJECTION_SHEET_NAME = "05 - Prompt Injection"
+    CONCEALMENT_SHEET_NAME = "06 - Ocultação visual"
+    LOCATIONS_SHEET_NAME = "07 - Localizações"
+    COMPARISONS_SHEET_NAME = "08 - Comparações"
 
     def __init__(self) -> None:
-        self._analysis_repository = AnalysisMemoryRepository()
+        self._analysis_repository = (
+            AnalysisMemoryRepository()
+        )
+
         self._cross_validation_service = (
             BatchCrossValidationService()
+        )
+
+        self._finding_aggregation_service = (
+            BatchFindingAggregationService()
+        )
+
+        self._analysis_view_builder = (
+            AnalysisViewBuilder()
+        )
+
+        self._investigation_view_builder = (
+            InvestigationViewBuilder()
+        )
+
+        self._status_resolver = (
+            InvestigationStatusResolver()
+        )
+
+        self._export_view_builder = (
+            BatchExportViewBuilder()
         )
 
     def export(
         self,
         batch: Batch,
     ) -> dict[str, Any]:
-        output_dir = settings.REPORTS_DIR / "batches"
+        output_dir = (
+            settings.REPORTS_DIR
+            / "batches"
+        )
 
         output_dir.mkdir(
             parents=True,
@@ -43,62 +95,146 @@ class BatchExcelExportService:
         )
 
         filename = (
-            f"docdna_lote_{str(batch.id)[:8]}.xlsx"
+            f"docdna_lote_"
+            f"{str(batch.id)[:8]}"
+            f".xlsx"
         )
 
-        file_path = output_dir / filename
+        file_path = (
+            output_dir
+            / filename
+        )
+
+        export_view = (
+            self._build_export_view(
+                batch
+            )
+        )
 
         workbook = Workbook()
 
         summary_sheet = workbook.active
-        summary_sheet.title = self.SUMMARY_SHEET_NAME
+        summary_sheet.title = (
+            self.SUMMARY_SHEET_NAME
+        )
 
         documents_sheet = workbook.create_sheet(
             self.DOCUMENTS_SHEET_NAME
         )
-
+        findings_sheet = workbook.create_sheet(
+            self.FINDINGS_SHEET_NAME
+        )
         evidences_sheet = workbook.create_sheet(
             self.EVIDENCES_SHEET_NAME
         )
-
+        financial_sheet = workbook.create_sheet(
+            self.FINANCIAL_SHEET_NAME
+        )
+        prompt_injection_sheet = workbook.create_sheet(
+            self.PROMPT_INJECTION_SHEET_NAME
+        )
+        concealment_sheet = workbook.create_sheet(
+            self.CONCEALMENT_SHEET_NAME
+        )
+        locations_sheet = workbook.create_sheet(
+            self.LOCATIONS_SHEET_NAME
+        )
         comparisons_sheet = workbook.create_sheet(
             self.COMPARISONS_SHEET_NAME
         )
 
-        exported_documents = self._build_documents_sheet(
-            worksheet=documents_sheet,
-            batch=batch,
+        exported_documents = (
+            self._build_documents_sheet(
+                worksheet=documents_sheet,
+                batch=batch,
+                export_view=export_view,
+            )
         )
 
-        exported_evidences = self._build_evidences_sheet(
-            worksheet=evidences_sheet,
-            batch=batch,
+        exported_findings = (
+            self._build_findings_sheet(
+                worksheet=findings_sheet,
+                export_view=export_view,
+            )
+        )
+
+        exported_evidences = (
+            self._build_evidences_sheet(
+                worksheet=evidences_sheet,
+                batch=batch,
+            )
+        )
+
+        exported_financial = (
+            self._build_financial_sheet(
+                worksheet=financial_sheet,
+                export_view=export_view,
+            )
+        )
+
+        exported_prompt_injection = (
+            self._build_prompt_injection_sheet(
+                worksheet=prompt_injection_sheet,
+                export_view=export_view,
+            )
+        )
+
+        exported_concealment = (
+            self._build_concealment_sheet(
+                worksheet=concealment_sheet,
+                export_view=export_view,
+            )
+        )
+
+        exported_locations = (
+            self._build_locations_sheet(
+                worksheet=locations_sheet,
+                export_view=export_view,
+            )
         )
 
         evidence_report = (
             self._cross_validation_service
-            .build_evidence_report(batch)
+            .build_evidence_report(
+                batch
+            )
         )
 
         exported_comparisons = (
             self._build_comparisons_sheet(
                 worksheet=comparisons_sheet,
-                evidences=evidence_report.evidences,
+                evidences=(
+                    evidence_report.evidences
+                ),
+                total_documents=(
+                    batch.result.total_documents
+                ),
             )
         )
 
         self._build_summary_sheet(
             worksheet=summary_sheet,
-            batch=batch,
+            export_view=export_view,
             exported_documents=exported_documents,
+            exported_findings=exported_findings,
             exported_evidences=exported_evidences,
+            exported_financial=exported_financial,
+            exported_prompt_injection=(
+                exported_prompt_injection
+            ),
+            exported_concealment=(
+                exported_concealment
+            ),
+            exported_locations=exported_locations,
             exported_comparisons=exported_comparisons,
             highest_severity=(
                 evidence_report.highest_severity
             ),
         )
 
-        workbook.save(file_path)
+        workbook.save(
+            file_path
+        )
 
         return {
             "batch_id": str(batch.id),
@@ -111,21 +247,117 @@ class BatchExcelExportService:
                 batch.result.total_documents
             ),
             "exported_documents": exported_documents,
+            "exported_findings": exported_findings,
             "exported_evidences": exported_evidences,
+            "exported_financial": exported_financial,
+            "exported_prompt_injection": (
+                exported_prompt_injection
+            ),
+            "exported_concealment": (
+                exported_concealment
+            ),
+            "exported_locations": exported_locations,
+            "exported_comparisons": exported_comparisons,
             "message": (
-                "Relatório do lote exportado com sucesso."
+                "Relatório do lote "
+                "exportado com sucesso."
             ),
         }
+
+    def _build_export_view(
+        self,
+        batch: Batch,
+    ) -> dict[str, Any]:
+        analyses: list[dict[str, Any]] = []
+        analysis_views: list[dict[str, Any]] = []
+        document_analytical_statuses = {}
+
+        for batch_document in batch.documents:
+            analysis_id = batch_document.analysis_id
+
+            if analysis_id is None:
+                continue
+
+            analysis = self._get_analysis(
+                analysis_id
+            )
+
+            if analysis is None:
+                continue
+
+            analyses.append(analysis)
+
+            analysis_view = (
+                self._analysis_view_builder
+                .build(analysis)
+            )
+
+            analysis_views.append(
+                analysis_view
+            )
+
+            investigation_cards = (
+                self
+                ._investigation_view_builder
+                .build_cards(
+                    analysis_id=analysis_id,
+                    analysis_view=analysis_view,
+                )
+            )
+
+            analytical_status = (
+                self._status_resolver
+                .resolve(
+                    investigation_cards
+                )
+            )
+
+            document_analytical_statuses[
+                str(analysis_id)
+            ] = analytical_status
+
+        finding_summaries = (
+            self
+            ._finding_aggregation_service
+            .aggregate(
+                analyses
+            )
+        )
+
+        return (
+            self._export_view_builder
+            .build(
+                batch=batch,
+                finding_summaries=(
+                    finding_summaries
+                ),
+                document_analytical_statuses=(
+                    document_analytical_statuses
+                ),
+                analysis_views=analysis_views,
+            )
+        )
 
     def _build_summary_sheet(
         self,
         worksheet,
-        batch: Batch,
+        export_view: dict[str, Any],
         exported_documents: int,
+        exported_findings: int,
         exported_evidences: int,
+        exported_financial: int,
+        exported_prompt_injection: int,
+        exported_concealment: int,
+        exported_locations: int,
         exported_comparisons: int,
         highest_severity: EvidenceSeverity | None,
     ) -> None:
+        summary = (
+            export_view[
+                "summary"
+            ]
+        )
+
         worksheet.append(
             [
                 "Campo",
@@ -136,63 +368,153 @@ class BatchExcelExportService:
         rows = [
             (
                 "ID do lote",
-                str(batch.id),
+                summary["batch_id"],
             ),
             (
-                "Status",
-                self._translate_batch_status(
-                    batch.status.value
+                "Tipo da análise",
+                (
+                    "Análise de documento individual"
+                    if summary["total_documents"] == 1
+                    else "Análise em lote"
                 ),
+            ),
+            (
+                "Observação",
+                (
+                    "Esta exportação corresponde à análise de um único "
+                    "documento. Indicadores como 1/1 e 100% representam "
+                    "a presença do achado neste documento e não um padrão "
+                    "comparativo entre documentos."
+                    if summary["total_documents"] == 1
+                    else (
+                        "Esta exportação consolida os resultados dos "
+                        "documentos analisados no lote."
+                    )
+                ),
+            ),
+            (
+                "Status do processamento",
+                summary[
+                    "processing_status_label"
+                ],
+            ),
+            (
+                "Situação analítica",
+                summary[
+                    "analytical_status_label"
+                ],
             ),
             (
                 "Criado em",
-                self._format_datetime(
-                    batch.created_at
-                ),
+                summary["created_at"],
             ),
             (
                 "Iniciado em",
-                self._format_datetime(
-                    batch.started_at
-                ),
+                summary["started_at"],
             ),
             (
                 "Finalizado em",
-                self._format_datetime(
-                    batch.finished_at
-                ),
+                summary["finished_at"],
             ),
             (
                 "Total de documentos",
-                batch.result.total_documents,
+                summary[
+                    "total_documents"
+                ],
             ),
             (
                 "Documentos concluídos",
-                batch.result.completed_documents,
+                summary[
+                    "completed_documents"
+                ],
             ),
             (
                 "Documentos com falha",
-                batch.result.failed_documents,
+                summary[
+                    "failed_documents"
+                ],
             ),
             (
                 "Documentos pendentes",
-                batch.result.pending_documents,
+                summary[
+                    "pending_documents"
+                ],
             ),
             (
                 "Documentos em processamento",
-                batch.result.processing_documents,
+                summary[
+                    "processing_documents"
+                ],
             ),
             (
                 "Progresso",
-                f"{batch.result.progress_percentage:.2f}%",
+                summary[
+                    "progress_label"
+                ],
+            ),
+            (
+                "Alta prioridade",
+                summary[
+                    "alert_documents"
+                ],
+            ),
+            (
+                "Revisão recomendada",
+                summary[
+                    "attention_documents"
+                ],
+            ),
+            (
+                "Sem apontamentos",
+                summary[
+                    "clear_documents"
+                ],
+            ),
+            (
+                "Análise incompleta",
+                summary[
+                    "not_executed_documents"
+                ],
+            ),
+            (
+                "Documentos classificados",
+                summary[
+                    "classified_documents"
+                ],
+            ),
+            (
+                "Tipos de achado",
+                summary[
+                    "finding_type_count"
+                ],
             ),
             (
                 "Documentos exportados",
                 exported_documents,
             ),
             (
+                "Achados agregados exportados",
+                exported_findings,
+            ),
+            (
                 "Evidências individuais exportadas",
                 exported_evidences,
+            ),
+            (
+                "Registros financeiros exportados",
+                exported_financial,
+            ),
+            (
+                "Evidências de Prompt Injection exportadas",
+                exported_prompt_injection,
+            ),
+            (
+                "Achados de ocultação visual exportados",
+                exported_concealment,
+            ),
+            (
+                "Localizações visuais exportadas",
+                exported_locations,
             ),
             (
                 "Comparações do lote exportadas",
@@ -211,25 +533,50 @@ class BatchExcelExportService:
         ]
 
         for row in rows:
-            worksheet.append(row)
+            worksheet.append(
+                row
+            )
 
         self._style_worksheet(
             worksheet=worksheet,
             freeze_panes="A2",
-            auto_filter=True,
+            auto_filter=False,
         )
 
-        worksheet.column_dimensions["A"].width = 38
-        worksheet.column_dimensions["B"].width = 52
+        worksheet.column_dimensions[
+            "A"
+        ].width = 42
+
+        worksheet.column_dimensions[
+            "B"
+        ].width = 52
+
+        self._style_summary_statuses(
+            worksheet=worksheet,
+            analytical_status=(
+                summary[
+                    "analytical_status"
+                ]
+            ),
+        )
 
     def _build_documents_sheet(
         self,
         worksheet,
         batch: Batch,
+        export_view: dict[str, Any],
     ) -> int:
+        documents_by_analysis_id = {
+            str(document["analysis_id"]): document
+            for document in export_view["documents"]
+            if document["analysis_id"]
+        }
+
         headers = [
             "Documento",
             "Status no lote",
+            "Situação analítica",
+            "Código analítico",
             "ID da análise",
             "Tamanho em bytes",
             "SHA-256",
@@ -257,6 +604,28 @@ class BatchExcelExportService:
         exported_documents = 0
 
         for batch_document in batch.documents:
+            analysis_id_key = (
+                str(batch_document.analysis_id)
+                if batch_document.analysis_id
+                else ""
+            )
+
+            exported_document = documents_by_analysis_id.get(
+                analysis_id_key
+            )
+
+            analytical_status = (
+                exported_document["analytical_status"]
+                if exported_document
+                else "not_executed"
+            )
+
+            analytical_status_label = (
+                exported_document["analytical_status_label"]
+                if exported_document
+                else "Análise incompleta"
+            )
+
             analysis = self._get_analysis(
                 batch_document.analysis_id
             )
@@ -268,6 +637,8 @@ class BatchExcelExportService:
                         self._translate_document_status(
                             batch_document.status.value
                         ),
+                        analytical_status_label,
+                        analytical_status,
                         self._optional_uuid(
                             batch_document.analysis_id
                         ),
@@ -292,7 +663,6 @@ class BatchExcelExportService:
                         batch_document.error_message,
                     ]
                 )
-
                 continue
 
             barcodes = analysis.get(
@@ -339,6 +709,8 @@ class BatchExcelExportService:
                     self._translate_document_status(
                         batch_document.status.value
                     ),
+                    analytical_status_label,
+                    analytical_status,
                     self._optional_uuid(
                         batch_document.analysis_id
                     ),
@@ -405,14 +777,141 @@ class BatchExcelExportService:
         self._style_worksheet(
             worksheet=worksheet,
             freeze_panes="A2",
-            auto_filter=True,
+            auto_filter=False,
         )
 
         self._set_documents_column_widths(
             worksheet
         )
 
+        self._style_document_statuses(
+            worksheet
+        )
+
+        self._add_excel_table(
+            worksheet=worksheet,
+            table_name="DocDNA_Documentos",
+        )
+
         return exported_documents
+
+    def _build_findings_sheet(
+            self,
+            worksheet,
+            export_view: dict[str, Any],
+    ) -> int:
+        headers = [
+            "Código",
+            "Tipo de achado",
+            "Documentos afetados",
+            "Total de documentos",
+            "Prevalência",
+            "Ocorrências",
+            "Maior confiança",
+            "IDs das análises afetadas",
+        ]
+
+        worksheet.append(
+            headers
+        )
+
+        findings = (
+            export_view[
+                "findings_by_type"
+            ]
+        )
+
+        if not findings:
+            worksheet.append(
+                [
+                    "SEM_ACHADOS",
+                    (
+                        "Nenhum achado "
+                        "agregado identificado"
+                    ),
+                    0,
+                    export_view[
+                        "summary"
+                    ][
+                        "total_documents"
+                    ],
+                    0.0,
+                    0,
+                    0.0,
+                    "",
+                ]
+            )
+        else:
+            for finding in findings:
+                worksheet.append(
+                    [
+                        finding["code"],
+                        finding["title"],
+                        finding[
+                            "affected_documents"
+                        ],
+                        finding[
+                            "total_documents"
+                        ],
+                        finding[
+                            "prevalence_ratio"
+                        ],
+                        finding[
+                            "occurrence_count"
+                        ],
+                        finding[
+                            "highest_confidence"
+                        ],
+                        self._join_values(
+                            finding[
+                                "affected_document_ids"
+                            ]
+                        ),
+                    ]
+                )
+
+        self._style_worksheet(
+            worksheet=worksheet,
+            freeze_panes="A2",
+            auto_filter=False,
+        )
+
+        for cell in worksheet["E"][1:]:
+            cell.number_format = (
+                "0.0%"
+            )
+
+        for cell in worksheet["G"][1:]:
+            cell.number_format = (
+                "0%"
+            )
+
+        widths = {
+            "A": 32,
+            "B": 38,
+            "C": 22,
+            "D": 22,
+            "E": 18,
+            "F": 18,
+            "G": 18,
+            "H": 70,
+        }
+
+        for column, width in (
+                widths.items()
+        ):
+            worksheet.column_dimensions[
+                column
+            ].width = width
+
+        self._add_excel_table(
+            worksheet=worksheet,
+            table_name=(
+                "DocDNA_AchadosPorTipo"
+            ),
+        )
+
+        return len(findings)
 
     def _build_evidences_sheet(
         self,
@@ -499,10 +998,18 @@ class BatchExcelExportService:
 
                 exported_evidences += 1
 
+        if exported_evidences == 0:
+            worksheet.append(
+                [
+                    "Nenhuma evidência genérica foi identificada.",
+                ]
+                + [None] * (len(headers) - 1)
+            )
+
         self._style_worksheet(
             worksheet=worksheet,
             freeze_panes="A2",
-            auto_filter=True,
+            auto_filter=False,
         )
 
         column_widths = {
@@ -521,12 +1028,424 @@ class BatchExcelExportService:
                 column
             ].width = width
 
+        self._add_excel_table(
+            worksheet=worksheet,
+            table_name="DocDNA_Evidencias",
+        )
+
         return exported_evidences
+
+    def _build_financial_sheet(
+        self,
+        worksheet,
+        export_view: dict[str, Any],
+    ) -> int:
+        headers = [
+            "Documento",
+            "ID da análise",
+            "Tipo de registro",
+            "Índice da linha",
+            "Índice do barcode",
+            "Linha digitável",
+            "Tipo da linha",
+            "Status",
+            "Método de validação",
+            "DVs válidos",
+            "Total de DVs",
+            "Barcode calculado",
+            "Barcode detectado",
+            "Mensagem",
+        ]
+
+        worksheet.append(headers)
+
+        records = export_view.get(
+            "financial",
+            [],
+        )
+
+        if not records:
+            worksheet.append(
+                [
+                    "Nenhum apontamento financeiro foi identificado.",
+                ]
+                + [None] * (len(headers) - 1)
+            )
+
+        for record in records:
+            worksheet.append(
+                [
+                    record.get("filename"),
+                    record.get("analysis_id"),
+                    record.get("record_type_label"),
+                    record.get("line_index"),
+                    record.get("barcode_index"),
+                    record.get("numeric_line"),
+                    record.get("line_type_label"),
+                    record.get("status_label"),
+                    record.get("validation_method_label"),
+                    record.get("valid_check_digits"),
+                    record.get("total_check_digits"),
+                    record.get("converted_barcode"),
+                    record.get("detected_barcode"),
+                    record.get("message"),
+                ]
+            )
+
+        self._style_worksheet(
+            worksheet=worksheet,
+            freeze_panes="A2",
+            auto_filter=False,
+        )
+
+        self._set_column_widths(
+            worksheet,
+            [
+                38, 38, 24, 16, 18, 70, 28,
+                28, 24, 14, 14, 62, 62, 70,
+            ],
+        )
+
+        self._add_excel_table(
+            worksheet=worksheet,
+            table_name="DocDNA_Financeiro",
+        )
+
+        return len(records)
+
+    def _build_prompt_injection_sheet(
+        self,
+        worksheet,
+        export_view: dict[str, Any],
+    ) -> int:
+        headers = [
+            "Documento",
+            "ID da análise",
+            "Índice da evidência",
+            "Risco",
+            "Score da análise",
+            "Código",
+            "Categoria",
+            "Detector",
+            "Página",
+            "Origem",
+            "Confiança",
+            "Peso",
+            "Score ponderado",
+            "Regra identificada",
+            "Trecho original",
+            "Trecho normalizado",
+            "Idioma",
+            "Fonte",
+            "Tamanho da fonte",
+            "Cor da fonte",
+            "Maior fonte da página",
+            "Método de análise",
+            "Grupos de sinais",
+            "Sinais identificados",
+            "Descrição",
+        ]
+
+        worksheet.append(headers)
+
+        records = export_view.get(
+            "prompt_injection",
+            [],
+        )
+
+        if not records:
+            worksheet.append(
+                [
+                    "Nenhum apontamento de Prompt Injection foi identificado.",
+                ]
+                + [None] * (len(headers) - 1)
+            )
+
+        for record in records:
+            worksheet.append(
+                [
+                    record.get("filename"),
+                    record.get("analysis_id"),
+                    record.get("evidence_index"),
+                    record.get("risk_label"),
+                    self._ratio_value(record.get("score")),
+                    record.get("code"),
+                    record.get("category_label"),
+                    record.get("detector"),
+                    record.get("page_number"),
+                    record.get("source_label"),
+                    self._ratio_value(record.get("confidence")),
+                    self._ratio_value(record.get("weight")),
+                    self._ratio_value(record.get("weighted_score")),
+                    record.get("matched_rule"),
+                    record.get("original_excerpt"),
+                    record.get("normalized_excerpt"),
+                    record.get("language"),
+                    record.get("font_name"),
+                    record.get("font_size"),
+                    record.get("font_color"),
+                    record.get("maximum_font_size"),
+                    record.get("analysis_method"),
+                    self._join_values(
+                        record.get("signal_groups", [])
+                    ),
+                    self._format_json_value(
+                        record.get("matched_signals")
+                    ),
+                    record.get("description"),
+                ]
+            )
+
+        for column in ("E", "K", "L", "M"):
+            for cell in worksheet[column][1:]:
+                if isinstance(cell.value, (int, float)):
+                    cell.number_format = "0.0%"
+
+        self._style_worksheet(
+            worksheet=worksheet,
+            freeze_panes="A2",
+            auto_filter=False,
+        )
+
+        self._set_column_widths(
+            worksheet,
+            [
+                38, 38, 18, 18, 18, 34, 32, 42,
+                12, 24, 16, 14, 18, 48, 80, 80,
+                14, 28, 18, 20, 20, 24, 40, 58, 70,
+            ],
+        )
+
+        self._add_excel_table(
+            worksheet=worksheet,
+            table_name="DocDNA_PromptInjection",
+        )
+
+        return len(records)
+
+    def _build_concealment_sheet(
+        self,
+        worksheet,
+        export_view: dict[str, Any],
+    ) -> int:
+        headers = [
+            "Documento",
+            "ID da análise",
+            "Índice do finding",
+            "Tipo",
+            "Código",
+            "Detector",
+            "Página",
+            "Texto",
+            "Descrição",
+            "Fonte",
+            "Tamanho da fonte",
+            "Cor da fonte",
+            "Confiança",
+            "Sinais técnicos",
+            "Texto branco/quase branco",
+            "Texto pequeno",
+            "Pequeno relativo à página",
+            "Conteúdo instrucional",
+            "Coordenadas",
+        ]
+
+        worksheet.append(headers)
+
+        records = export_view.get(
+            "concealment",
+            [],
+        )
+
+        if not records:
+            worksheet.append(
+                [
+                    "Nenhum achado de ocultação visual foi identificado.",
+                ]
+                + [None] * (len(headers) - 1)
+            )
+
+        for record in records:
+            signal_labels = record.get(
+                "signal_labels",
+                [],
+            )
+
+            if not signal_labels:
+                signal_labels = record.get(
+                    "signals",
+                    [],
+                )
+
+            worksheet.append(
+                [
+                    record.get("filename"),
+                    record.get("analysis_id"),
+                    record.get("finding_index"),
+                    record.get("concealment_type_label"),
+                    record.get("code"),
+                    record.get("detector"),
+                    record.get("page_number"),
+                    record.get("text"),
+                    record.get("description"),
+                    record.get("font_name"),
+                    record.get("font_size"),
+                    record.get("font_color_hex"),
+                    self._ratio_value(record.get("confidence")),
+                    self._join_values(signal_labels),
+                    self._yes_no(record.get("is_near_white")),
+                    self._yes_no(record.get("is_small_text")),
+                    self._yes_no(
+                        record.get("is_relative_small_text")
+                    ),
+                    self._yes_no(
+                        record.get("is_instruction_like")
+                    ),
+                    record.get("coordinates_label"),
+                ]
+            )
+
+        for cell in worksheet["M"][1:]:
+            if isinstance(cell.value, (int, float)):
+                cell.number_format = "0.0%"
+
+        self._style_worksheet(
+            worksheet=worksheet,
+            freeze_panes="A2",
+            auto_filter=False,
+        )
+
+        self._set_column_widths(
+            worksheet,
+            [
+                38, 38, 18, 32, 32, 40, 12, 80, 70,
+                28, 18, 20, 16, 55, 24, 18, 24, 24, 48,
+            ],
+        )
+
+        self._add_excel_table(
+            worksheet=worksheet,
+            table_name="DocDNA_OcultacaoVisual",
+        )
+
+        return len(records)
+
+    def _build_locations_sheet(
+        self,
+        worksheet,
+        export_view: dict[str, Any],
+    ) -> int:
+        headers = [
+            "Documento",
+            "ID da análise",
+            "Tipo de localização",
+            "Índice de referência",
+            "Código de referência",
+            "Detector",
+            "Página",
+            "Conteúdo localizado",
+            "X",
+            "Y",
+            "Largura",
+            "Altura",
+            "Confiança",
+            "Fonte",
+            "Tamanho da fonte",
+            "Cor da fonte",
+            "Coordenadas",
+            "Localizado",
+            "Mensagem",
+            "Imagem de origem",
+            "Imagem anotada",
+        ]
+
+        worksheet.append(headers)
+
+        records = export_view.get(
+            "locations",
+            [],
+        )
+
+        if not records:
+            worksheet.append(
+                [
+                    "Nenhuma localização visual foi produzida para este lote.",
+                ]
+                + [None] * (len(headers) - 1)
+            )
+
+        for record in records:
+            worksheet.append(
+                [
+                    record.get("filename"),
+                    record.get("analysis_id"),
+                    record.get("location_type_label"),
+                    record.get("reference_index"),
+                    record.get("reference_code"),
+                    record.get("detector"),
+                    record.get("page_number"),
+                    record.get("matched_content"),
+                    record.get("left"),
+                    record.get("top"),
+                    record.get("width"),
+                    record.get("height"),
+                    self._ratio_value(record.get("confidence")),
+                    record.get("font_name"),
+                    record.get("font_size"),
+                    record.get("font_color_hex"),
+                    record.get("coordinates_label"),
+                    self._yes_no(record.get("located")),
+                    record.get("message"),
+                    record.get("source_image_url"),
+                    record.get("annotated_image_url"),
+                ]
+            )
+
+            row_index = worksheet.max_row
+            self._set_hyperlink(
+                worksheet.cell(
+                    row=row_index,
+                    column=20,
+                )
+            )
+            self._set_hyperlink(
+                worksheet.cell(
+                    row=row_index,
+                    column=21,
+                )
+            )
+
+        for cell in worksheet["M"][1:]:
+            if isinstance(cell.value, (int, float)):
+                cell.number_format = "0.0%"
+
+        self._style_worksheet(
+            worksheet=worksheet,
+            freeze_panes="A2",
+            auto_filter=False,
+        )
+
+        self._set_column_widths(
+            worksheet,
+            [
+                38, 38, 28, 18, 34, 42, 12, 80,
+                14, 14, 14, 14, 16, 28, 18, 20,
+                48, 14, 60, 62, 62,
+            ],
+        )
+
+        self._add_excel_table(
+            worksheet=worksheet,
+            table_name="DocDNA_Localizacoes",
+        )
+
+        return len(records)
 
     def _build_comparisons_sheet(
         self,
         worksheet,
         evidences: list[DocumentEvidence],
+        total_documents: int,
     ) -> int:
         headers = [
             "Código do apontamento",
@@ -544,6 +1463,25 @@ class BatchExcelExportService:
         worksheet.append(headers)
 
         exported_comparisons = 0
+
+        if not evidences:
+            if total_documents == 1:
+                message = (
+                    "Comparação entre documentos não aplicável: "
+                    "este lote contém apenas um documento. "
+                    "São necessários dois ou mais documentos para "
+                    "análises comparativas."
+                )
+            else:
+                message = (
+                    "Nenhum apontamento comparativo foi identificado "
+                    "entre os documentos deste lote."
+                )
+
+            worksheet.append(
+                [message]
+                + [None] * (len(headers) - 1)
+            )
 
         for evidence in evidences:
             metadata = dict(
@@ -595,7 +1533,7 @@ class BatchExcelExportService:
         self._style_worksheet(
             worksheet=worksheet,
             freeze_panes="A2",
-            auto_filter=True,
+            auto_filter=False,
         )
 
         column_widths = {
@@ -615,6 +1553,11 @@ class BatchExcelExportService:
             worksheet.column_dimensions[
                 column
             ].width = width
+
+        self._add_excel_table(
+            worksheet=worksheet,
+            table_name="DocDNA_Comparacoes",
+        )
 
         return exported_comparisons
 
@@ -999,28 +1942,30 @@ class BatchExcelExportService:
         worksheet,
     ) -> None:
         widths = [
-            38,
-            18,
-            38,
-            18,
-            68,
-            12,
-            30,
-            26,
-            30,
-            24,
-            24,
-            54,
-            70,
-            34,
-            52,
-            70,
-            24,
-            70,
-            80,
-            18,
-            44,
-            46,
+            38,  # Documento
+            18,  # Status operacional
+            24,  # Situação analítica
+            18,  # Código analítico
+            38,  # ID análise
+            18,  # Tamanho
+            68,  # SHA
+            12,  # Páginas
+            30,  # Título
+            26,  # Autor
+            30,  # Produtor
+            24,  # Criação
+            24,  # Modificação
+            54,  # ITF
+            70,  # QR
+            34,  # Code39
+            52,  # Outros
+            70,  # Sequências
+            24,  # Fontes
+            70,  # Validações
+            80,  # Comparações
+            18,  # Evidências
+            44,  # Localização
+            46,  # Erro
         ]
 
         for index, width in enumerate(
@@ -1034,6 +1979,227 @@ class BatchExcelExportService:
             worksheet.column_dimensions[
                 column_letter
             ].width = width
+
+    def _add_excel_table(
+        self,
+        *,
+        worksheet,
+        table_name: str,
+    ) -> None:
+        if worksheet.max_row < 2:
+            return
+
+        reference = (
+            f"A1:"
+            f"{get_column_letter(worksheet.max_column)}"
+            f"{worksheet.max_row}"
+        )
+
+        table = Table(
+            displayName=table_name,
+            ref=reference,
+        )
+
+        style = TableStyleInfo(
+            name="TableStyleMedium2",
+            showFirstColumn=False,
+            showLastColumn=False,
+            showRowStripes=True,
+            showColumnStripes=False,
+        )
+
+        table.tableStyleInfo = style
+
+        worksheet.add_table(
+            table
+        )
+
+    def _style_document_statuses(
+        self,
+        worksheet,
+    ) -> None:
+        fills = {
+            "alert": "FCE8EC",
+            "attention": "FFF4D6",
+            "clear": "EAF6EE",
+            "not_executed": "EEF2F6",
+        }
+
+        fonts = {
+            "alert": "9F1239",
+            "attention": "92400E",
+            "clear": "166534",
+            "not_executed": "475569",
+        }
+
+        for row_index in range(
+            2,
+            worksheet.max_row + 1,
+        ):
+            label_cell = worksheet.cell(
+                row=row_index,
+                column=3,
+            )
+
+            code_cell = worksheet.cell(
+                row=row_index,
+                column=4,
+            )
+
+            status = str(
+                code_cell.value or ""
+            ).strip()
+
+            fill_color = fills.get(
+                status
+            )
+
+            font_color = fonts.get(
+                status
+            )
+
+            if fill_color:
+                label_cell.fill = PatternFill(
+                    fill_type="solid",
+                    fgColor=fill_color,
+                )
+
+            if font_color:
+                label_cell.font = Font(
+                    color=font_color,
+                    bold=True,
+                )
+
+    def _style_summary_statuses(
+        self,
+        *,
+        worksheet,
+        analytical_status: str,
+    ) -> None:
+        fills = {
+            "alert": "FCE8EC",
+            "attention": "FFF4D6",
+            "clear": "EAF6EE",
+            "not_executed": "EEF2F6",
+        }
+
+        fonts = {
+            "alert": "9F1239",
+            "attention": "92400E",
+            "clear": "166534",
+            "not_executed": "475569",
+        }
+
+        for row_index in range(
+            2,
+            worksheet.max_row + 1,
+        ):
+            label = worksheet.cell(
+                row=row_index,
+                column=1,
+            ).value
+
+            if label != "Situação analítica":
+                continue
+
+            value_cell = worksheet.cell(
+                row=row_index,
+                column=2,
+            )
+
+            fill_color = fills.get(
+                analytical_status
+            )
+
+            font_color = fonts.get(
+                analytical_status
+            )
+
+            if fill_color:
+                value_cell.fill = PatternFill(
+                    fill_type="solid",
+                    fgColor=fill_color,
+                )
+
+            if font_color:
+                value_cell.font = Font(
+                    color=font_color,
+                    bold=True,
+                )
+
+            break
+
+    def _set_column_widths(
+        self,
+        worksheet,
+        widths: list[int],
+    ) -> None:
+        for index, width in enumerate(
+            widths,
+            start=1,
+        ):
+            worksheet.column_dimensions[
+                get_column_letter(index)
+            ].width = width
+
+    def _ratio_value(
+        self,
+        value: Any,
+    ) -> float | None:
+        if value is None:
+            return None
+
+        try:
+            ratio = float(value)
+        except (TypeError, ValueError):
+            return None
+
+        return min(
+            max(ratio, 0.0),
+            1.0,
+        )
+
+    def _format_json_value(
+        self,
+        value: Any,
+    ) -> str:
+        if value in (None, "", [], {}, ()):
+            return ""
+
+        if isinstance(value, str):
+            return value
+
+        try:
+            return json.dumps(
+                value,
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        except (TypeError, ValueError):
+            return str(value)
+
+    def _yes_no(
+        self,
+        value: Any,
+    ) -> str:
+        return "Sim" if bool(value) else "Não"
+
+    def _set_hyperlink(
+        self,
+        cell,
+    ) -> None:
+        value = cell.value
+
+        if value is None:
+            return
+
+        target = str(value).strip()
+
+        if not target:
+            return
+
+        cell.hyperlink = target
+        cell.style = "Hyperlink"
 
     def _format_datetime(
         self,

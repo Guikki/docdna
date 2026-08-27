@@ -97,6 +97,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         progressBar.style.width = value + "%";
         feedbackStatus.textContent = Math.round(value) + "%";
+
         progress.setAttribute(
             "aria-valuenow",
             String(Math.round(value))
@@ -346,7 +347,13 @@ document.addEventListener("DOMContentLoaded", function () {
             '<section class="batch-result">'
             + '<div class="batch-result__header">'
             + "<div>"
-            + "<strong>Lote processado</strong>"
+            + "<strong>"
+            + (
+                batch.result.total_documents === 1
+                    ? "Documento processado"
+                    : "Lote processado"
+            )
+            + "</strong>"
             + "<p>"
             + batch.result.completed_documents
             + " documento(s) concluído(s) e "
@@ -375,41 +382,6 @@ document.addEventListener("DOMContentLoaded", function () {
             + "</section>";
     }
 
-    async function sendSingle(file) {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        showFeedback(
-            "Analisando documento",
-            "O PDF está sendo processado pelo DocDNA.",
-            25
-        );
-
-        const response = await fetch(
-            "/documents/upload",
-            {
-                method: "POST",
-                body: formData,
-            }
-        );
-
-        setProgress(80);
-
-        const payload = await response.json();
-
-        if (!response.ok) {
-            throw new Error(extractError(payload));
-        }
-
-        showFeedback(
-            "Análise concluída",
-            "Abrindo o resultado do documento.",
-            100
-        );
-
-        window.location.href = "/analyses/" + payload.id;
-    }
-
     async function sendBatch(files) {
         const formData = new FormData();
 
@@ -417,9 +389,15 @@ document.addEventListener("DOMContentLoaded", function () {
             formData.append("files", file);
         });
 
+        const singleDocument = files.length === 1;
+
         showFeedback(
-            "Analisando lote",
-            "Os documentos estão sendo processados.",
+            singleDocument
+                ? "Analisando documento"
+                : "Analisando lote",
+            singleDocument
+                ? "O PDF está sendo processado pelo DocDNA."
+                : "Os documentos estão sendo processados.",
             20
         );
 
@@ -440,8 +418,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         showFeedback(
-            "Lote concluído",
-            "Os resultados estão disponíveis abaixo.",
+            singleDocument
+                ? "Análise concluída"
+                : "Lote concluído",
+            singleDocument
+                ? "O documento foi processado. Abrindo o resultado."
+                : "Os resultados estão disponíveis abaixo.",
             100
         );
 
@@ -462,11 +444,7 @@ document.addEventListener("DOMContentLoaded", function () {
         setProcessing(true);
 
         try {
-            if (selectedFiles.length === 1) {
-                await sendSingle(selectedFiles[0]);
-            } else {
-                await sendBatch(selectedFiles);
-            }
+            await sendBatch(selectedFiles);
         } catch (error) {
             showFeedback(
                 "Processamento interrompido",
