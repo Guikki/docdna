@@ -486,6 +486,13 @@ def _forensic_analysis_view():
     return {
         "id": "analysis-001",
         "filename": "documento.pdf",
+        "has_native_text": True,
+        "native_text_character_count": 1450,
+        "native_text_pages": 2,
+        "ocr_character_count": 980,
+        "ocr_pages_processed": 3,
+        "ocr_pages_with_text": 2,
+        "ocr_language": "por",
         "numeric_line_validations": [
             {
                 "line_index": 1,
@@ -736,3 +743,183 @@ def test_empty_analysis_views_should_produce_empty_forensic_collections():
     assert export_view["prompt_injection"] == []
     assert export_view["concealment"] == []
     assert export_view["locations"] == []
+
+
+def _technical_analysis_view():
+    return {
+        "id": "analysis-tech-001",
+        "filename": "tecnico.pdf",
+        "uploaded_at": "31/08/2026 às 14:00:00",
+        "size_bytes": 204800,
+        "formatted_size": "200.00 KB",
+        "sha256": "abc123",
+        "page_count": 3,
+        "pdf_title": "Documento técnico",
+        "pdf_author": "Autor Teste",
+        "pdf_creator": "Creator Teste",
+        "pdf_producer": "Producer Teste",
+        "pdf_creation_date": "30/08/2026 às 10:00:00",
+        "pdf_modification_date": "31/08/2026 às 09:00:00",
+        "pdf_version": "1.7",
+        "has_native_text": True,
+        "native_text_character_count": 1520,
+        "native_text_pages": [1, 2],
+        "ocr_character_count": 930,
+        "ocr_pages_processed": 3,
+        "ocr_pages_with_text": [2, 3],
+        "ocr_language": "por",
+        "has_normalized_document": True,
+        "normalized_document_page_count": 3,
+        "normalized_document_text_span_count": 87,
+        "normalized_document_word_count": 245,
+        "normalized_document_character_count": 1600,
+        "normalized_document_normalized_character_count": 1480,
+        "normalized_document_pages_with_text": 3,
+        "image_count": 4,
+        "image_fingerprint_count": 2,
+        "barcode_count": 2,
+        "barcode_formats": "ITF, QR_CODE",
+        "barcode_pages": "1, 3",
+        "printed_numeric_line_count": 1,
+        "printed_numeric_line_sources": "Texto nativo",
+        "printed_numeric_digit_total": 47,
+        "valid_numeric_line_count": 0,
+        "invalid_numeric_line_count": 1,
+        "inconclusive_numeric_line_count": 0,
+        "barcode_line_match_count": 0,
+        "barcode_line_mismatch_count": 1,
+        "barcode_line_inconclusive_count": 0,
+        "evidence_count": 3,
+        "image_fingerprints": [
+            {
+                "index": 1,
+                "page_number": 1,
+                "width": 640,
+                "height": 480,
+                "mime_type": "image/png",
+                "dpi": 300,
+                "description": "Imagem técnica 1",
+                "confidence": "98.0%",
+                "image_hash": "sha-image-1",
+                "perceptual_hash": "phash-1",
+                "average_hash": "ahash-1",
+                "difference_hash": "dhash-1",
+                "location": {
+                    "x": "10.00",
+                    "y": "20.00",
+                    "width": "100.00",
+                    "height": "80.00",
+                },
+            },
+            {
+                "index": 2,
+                "page_number": 3,
+                "width": 320,
+                "height": 240,
+                "mime_type": "image/jpeg",
+                "dpi": None,
+                "description": "Imagem técnica 2",
+                "confidence": "85.0%",
+                "image_hash": "sha-image-2",
+                "perceptual_hash": "phash-2",
+                "average_hash": "ahash-2",
+                "difference_hash": "dhash-2",
+                "location": None,
+            },
+        ],
+    }
+
+
+def test_should_export_technical_document_data():
+    batch = _batch([
+        _document(filename="tecnico.pdf")
+    ])
+
+    export_view = BatchExportViewBuilder().build(
+        batch=batch,
+        analysis_views=[
+            _technical_analysis_view()
+        ],
+    )
+
+    technical_data = export_view[
+        "technical_data"
+    ]
+
+    assert len(technical_data) == 1
+
+    document = technical_data[0]
+
+    assert document["analysis_id"] == "analysis-tech-001"
+    assert document["filename"] == "tecnico.pdf"
+    assert document["sha256"] == "abc123"
+    assert document["page_count"] == 3
+    assert document["pdf_version"] == "1.7"
+    assert document["has_native_text"] is True
+    assert document["native_text_character_count"] == 1520
+    assert document["ocr_pages_processed"] == 3
+    assert document["ocr_pages_with_text"] == [2, 3]
+    assert document["has_normalized_document"] is True
+    assert document["normalized_document_word_count"] == 245
+    assert document["image_count"] == 4
+    assert document["image_fingerprint_count"] == 2
+    assert document["barcode_count"] == 2
+    assert document["invalid_numeric_line_count"] == 1
+    assert document["barcode_line_mismatch_count"] == 1
+    assert document["evidence_count"] == 3
+
+
+def test_should_export_image_fingerprints():
+    batch = _batch([
+        _document(filename="tecnico.pdf")
+    ])
+
+    export_view = BatchExportViewBuilder().build(
+        batch=batch,
+        analysis_views=[
+            _technical_analysis_view()
+        ],
+    )
+
+    images = export_view["images"]
+
+    assert len(images) == 2
+
+    first = images[0]
+
+    assert first["analysis_id"] == "analysis-tech-001"
+    assert first["filename"] == "tecnico.pdf"
+    assert first["total_extracted_images"] == 4
+    assert first["fingerprint_index"] == 1
+    assert first["page_number"] == 1
+    assert first["width"] == 640
+    assert first["height"] == 480
+    assert first["mime_type"] == "image/png"
+    assert first["dpi"] == 300
+    assert first["confidence"] == "98.0%"
+    assert first["image_hash"] == "sha-image-1"
+    assert first["perceptual_hash"] == "phash-1"
+    assert first["average_hash"] == "ahash-1"
+    assert first["difference_hash"] == "dhash-1"
+    assert first["location_x"] == "10.00"
+    assert first["location_height"] == "80.00"
+
+    second = images[1]
+
+    assert second["fingerprint_index"] == 2
+    assert second["location_x"] is None
+    assert second["location_y"] is None
+
+
+def test_empty_analysis_views_should_produce_empty_technical_collections():
+    batch = _batch([
+        _document(filename="clean.pdf")
+    ])
+
+    export_view = BatchExportViewBuilder().build(
+        batch=batch,
+        analysis_views=[],
+    )
+
+    assert export_view["technical_data"] == []
+    assert export_view["images"] == []

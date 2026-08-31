@@ -116,6 +116,18 @@ class BatchExportViewBuilder:
                     normalized_analysis_views
                 )
             ),
+
+            "technical_data": (
+                self._build_technical_data(
+                    normalized_analysis_views
+                )
+            ),
+
+            "images": (
+                self._build_images(
+                    normalized_analysis_views
+                )
+            ),
         }
 
     def _build_summary(
@@ -1314,6 +1326,288 @@ class BatchExportViewBuilder:
                         ),
                         location=location,
                     )
+                )
+
+        return result
+
+    def _build_technical_data(
+        self,
+        analysis_views: list[
+            dict[str, Any]
+        ],
+    ) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = []
+
+        for analysis in analysis_views:
+            result.append(
+                {
+                    "analysis_id": self._string_value(
+                        analysis.get("id")
+                    ),
+                    "filename": self._string_value(
+                        analysis.get("filename")
+                    ),
+                    "uploaded_at": analysis.get(
+                        "uploaded_at"
+                    ),
+                    "size_bytes": analysis.get(
+                        "size_bytes"
+                    ),
+                    "formatted_size": analysis.get(
+                        "formatted_size"
+                    ),
+                    "sha256": analysis.get(
+                        "sha256"
+                    ),
+                    "page_count": analysis.get(
+                        "page_count"
+                    ),
+                    "pdf_title": analysis.get(
+                        "pdf_title"
+                    ),
+                    "pdf_author": analysis.get(
+                        "pdf_author"
+                    ),
+                    "pdf_creator": analysis.get(
+                        "pdf_creator"
+                    ),
+                    "pdf_producer": analysis.get(
+                        "pdf_producer"
+                    ),
+                    "pdf_creation_date": analysis.get(
+                        "pdf_creation_date"
+                    ),
+                    "pdf_modification_date": analysis.get(
+                        "pdf_modification_date"
+                    ),
+                    "pdf_version": analysis.get(
+                        "pdf_version"
+                    ),
+                    "has_native_text": bool(
+                        analysis.get(
+                            "has_native_text",
+                            False,
+                        )
+                    ),
+                    "native_text_character_count": (
+                        analysis.get(
+                            "native_text_character_count",
+                            0,
+                        )
+                    ),
+                    "native_text_pages": analysis.get(
+                        "native_text_pages",
+                        0,
+                    ),
+                    "ocr_character_count": analysis.get(
+                        "ocr_character_count",
+                        0,
+                    ),
+                    "ocr_pages_processed": analysis.get(
+                        "ocr_pages_processed",
+                        0,
+                    ),
+                    "ocr_pages_with_text": analysis.get(
+                        "ocr_pages_with_text",
+                        0,
+                    ),
+                    "ocr_language": analysis.get(
+                        "ocr_language"
+                    ),
+                    "has_normalized_document": bool(
+                        analysis.get(
+                            "has_normalized_document",
+                            False,
+                        )
+                    ),
+                    "normalized_document_page_count": (
+                        analysis.get(
+                            "normalized_document_page_count",
+                            0,
+                        )
+                    ),
+                    "normalized_document_text_span_count": (
+                        analysis.get(
+                            "normalized_document_text_span_count",
+                            0,
+                        )
+                    ),
+                    "normalized_document_word_count": (
+                        analysis.get(
+                            "normalized_document_word_count",
+                            0,
+                        )
+                    ),
+                    "normalized_document_character_count": (
+                        analysis.get(
+                            "normalized_document_character_count",
+                            0,
+                        )
+                    ),
+                    "normalized_document_normalized_character_count": (
+                        analysis.get(
+                            "normalized_document_normalized_character_count",
+                            0,
+                        )
+                    ),
+                    "normalized_document_pages_with_text": (
+                        analysis.get(
+                            "normalized_document_pages_with_text",
+                            0,
+                        )
+                    ),
+                    "image_count": analysis.get(
+                        "image_count",
+                        0,
+                    ),
+                    "image_fingerprint_count": analysis.get(
+                        "image_fingerprint_count",
+                        0,
+                    ),
+                    "barcode_count": analysis.get(
+                        "barcode_count",
+                        0,
+                    ),
+                    "barcode_formats": analysis.get(
+                        "barcode_formats"
+                    ),
+                    "barcode_pages": analysis.get(
+                        "barcode_pages"
+                    ),
+                    "printed_numeric_line_count": analysis.get(
+                        "printed_numeric_line_count",
+                        0,
+                    ),
+                    "printed_numeric_line_sources": analysis.get(
+                        "printed_numeric_line_sources"
+                    ),
+                    "printed_numeric_digit_total": analysis.get(
+                        "printed_numeric_digit_total",
+                        0,
+                    ),
+                    "valid_numeric_line_count": analysis.get(
+                        "valid_numeric_line_count",
+                        0,
+                    ),
+                    "invalid_numeric_line_count": analysis.get(
+                        "invalid_numeric_line_count",
+                        0,
+                    ),
+                    "inconclusive_numeric_line_count": analysis.get(
+                        "inconclusive_numeric_line_count",
+                        0,
+                    ),
+                    "barcode_line_match_count": analysis.get(
+                        "barcode_line_match_count",
+                        0,
+                    ),
+                    "barcode_line_mismatch_count": analysis.get(
+                        "barcode_line_mismatch_count",
+                        0,
+                    ),
+                    "barcode_line_inconclusive_count": analysis.get(
+                        "barcode_line_inconclusive_count",
+                        0,
+                    ),
+                    "evidence_count": analysis.get(
+                        "evidence_count",
+                        0,
+                    ),
+                }
+            )
+
+        return result
+
+    def _build_images(
+        self,
+        analysis_views: list[
+            dict[str, Any]
+        ],
+    ) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = []
+
+        for analysis in analysis_views:
+            analysis_id = self._string_value(
+                analysis.get("id")
+            )
+            filename = self._string_value(
+                analysis.get("filename")
+            )
+            total_extracted_images = analysis.get(
+                "image_count",
+                0,
+            )
+
+            fingerprints = (
+                analysis.get(
+                    "image_fingerprints",
+                    [],
+                )
+                or []
+            )
+
+            for fingerprint in fingerprints:
+                location = (
+                    fingerprint.get("location")
+                    or {}
+                )
+
+                result.append(
+                    {
+                        "analysis_id": analysis_id,
+                        "filename": filename,
+                        "total_extracted_images": (
+                            total_extracted_images
+                        ),
+                        "fingerprint_index": fingerprint.get(
+                            "index"
+                        ),
+                        "page_number": fingerprint.get(
+                            "page_number"
+                        ),
+                        "width": fingerprint.get(
+                            "width"
+                        ),
+                        "height": fingerprint.get(
+                            "height"
+                        ),
+                        "mime_type": fingerprint.get(
+                            "mime_type"
+                        ),
+                        "dpi": fingerprint.get(
+                            "dpi"
+                        ),
+                        "description": fingerprint.get(
+                            "description"
+                        ),
+                        "confidence": fingerprint.get(
+                            "confidence"
+                        ),
+                        "image_hash": fingerprint.get(
+                            "image_hash"
+                        ),
+                        "perceptual_hash": fingerprint.get(
+                            "perceptual_hash"
+                        ),
+                        "average_hash": fingerprint.get(
+                            "average_hash"
+                        ),
+                        "difference_hash": fingerprint.get(
+                            "difference_hash"
+                        ),
+                        "location_x": location.get(
+                            "x"
+                        ),
+                        "location_y": location.get(
+                            "y"
+                        ),
+                        "location_width": location.get(
+                            "width"
+                        ),
+                        "location_height": location.get(
+                            "height"
+                        ),
+                    }
                 )
 
         return result

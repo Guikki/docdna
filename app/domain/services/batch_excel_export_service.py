@@ -50,6 +50,8 @@ class BatchExcelExportService:
     CONCEALMENT_SHEET_NAME = "06 - Ocultação visual"
     LOCATIONS_SHEET_NAME = "07 - Localizações"
     COMPARISONS_SHEET_NAME = "08 - Comparações"
+    TECHNICAL_DATA_SHEET_NAME = "09 - Dados técnicos"
+    IMAGES_SHEET_NAME = "10 - Imagens"
 
     def __init__(self) -> None:
         self._analysis_repository = (
@@ -142,6 +144,12 @@ class BatchExcelExportService:
         comparisons_sheet = workbook.create_sheet(
             self.COMPARISONS_SHEET_NAME
         )
+        technical_data_sheet = workbook.create_sheet(
+            self.TECHNICAL_DATA_SHEET_NAME
+        )
+        images_sheet = workbook.create_sheet(
+            self.IMAGES_SHEET_NAME
+        )
 
         exported_documents = (
             self._build_documents_sheet(
@@ -193,6 +201,20 @@ class BatchExcelExportService:
             )
         )
 
+        exported_technical_data = (
+            self._build_technical_data_sheet(
+                worksheet=technical_data_sheet,
+                export_view=export_view,
+            )
+        )
+
+        exported_images = (
+            self._build_images_sheet(
+                worksheet=images_sheet,
+                export_view=export_view,
+            )
+        )
+
         evidence_report = (
             self._cross_validation_service
             .build_evidence_report(
@@ -227,6 +249,10 @@ class BatchExcelExportService:
             ),
             exported_locations=exported_locations,
             exported_comparisons=exported_comparisons,
+            exported_technical_data=(
+                exported_technical_data
+            ),
+            exported_images=exported_images,
             highest_severity=(
                 evidence_report.highest_severity
             ),
@@ -258,6 +284,10 @@ class BatchExcelExportService:
             ),
             "exported_locations": exported_locations,
             "exported_comparisons": exported_comparisons,
+            "exported_technical_data": (
+                exported_technical_data
+            ),
+            "exported_images": exported_images,
             "message": (
                 "Relatório do lote "
                 "exportado com sucesso."
@@ -350,6 +380,8 @@ class BatchExcelExportService:
         exported_concealment: int,
         exported_locations: int,
         exported_comparisons: int,
+        exported_technical_data: int,
+        exported_images: int,
         highest_severity: EvidenceSeverity | None,
     ) -> None:
         summary = (
@@ -519,6 +551,14 @@ class BatchExcelExportService:
             (
                 "Comparações do lote exportadas",
                 exported_comparisons,
+            ),
+            (
+                "Registros técnicos exportados",
+                exported_technical_data,
+            ),
+            (
+                "Fingerprints de imagem exportados",
+                exported_images,
             ),
             (
                 "Severidade comparativa predominante",
@@ -1437,6 +1477,240 @@ class BatchExcelExportService:
         self._add_excel_table(
             worksheet=worksheet,
             table_name="DocDNA_Localizacoes",
+        )
+
+        return len(records)
+
+    def _build_technical_data_sheet(
+        self,
+        worksheet,
+        export_view: dict[str, Any],
+    ) -> int:
+        headers = [
+            "Documento",
+            "ID da análise",
+            "Enviado em",
+            "Tamanho em bytes",
+            "Tamanho formatado",
+            "SHA-256",
+            "Páginas",
+            "Título do PDF",
+            "Autor do PDF",
+            "Criador do PDF",
+            "Produtor do PDF",
+            "Data de criação",
+            "Data de modificação",
+            "Versão do PDF",
+            "Possui texto nativo",
+            "Caracteres de texto nativo",
+            "Páginas com texto nativo",
+            "Caracteres OCR",
+            "Páginas processadas por OCR",
+            "Páginas com texto OCR",
+            "Idioma OCR",
+            "Documento normalizado",
+            "Páginas normalizadas",
+            "Text spans normalizados",
+            "Palavras normalizadas",
+            "Caracteres normalizados",
+            "Caracteres após normalização",
+            "Páginas normalizadas com texto",
+            "Imagens extraídas",
+            "Fingerprints de imagem",
+            "Códigos de barras",
+            "Formatos de código",
+            "Páginas com código",
+            "Sequências numéricas",
+            "Fontes das sequências",
+            "Dígitos em sequências",
+            "Linhas válidas",
+            "Linhas inválidas",
+            "Linhas inconclusivas",
+            "Comparações compatíveis",
+            "Comparações divergentes",
+            "Comparações inconclusivas",
+            "Total de evidências",
+        ]
+
+        worksheet.append(headers)
+
+        records = export_view.get(
+            "technical_data",
+            [],
+        )
+
+        if not records:
+            worksheet.append(
+                [
+                    "Nenhum dado técnico foi disponibilizado para exportação.",
+                ]
+                + [None] * (len(headers) - 1)
+            )
+
+        for record in records:
+            worksheet.append(
+                [
+                    record.get("filename"),
+                    record.get("analysis_id"),
+                    record.get("uploaded_at"),
+                    record.get("size_bytes"),
+                    record.get("formatted_size"),
+                    record.get("sha256"),
+                    record.get("page_count"),
+                    record.get("pdf_title"),
+                    record.get("pdf_author"),
+                    record.get("pdf_creator"),
+                    record.get("pdf_producer"),
+                    record.get("pdf_creation_date"),
+                    record.get("pdf_modification_date"),
+                    record.get("pdf_version"),
+                    self._yes_no(
+                        record.get("has_native_text")
+                    ),
+                    record.get("native_text_character_count"),
+                    record.get("native_text_pages", 0),
+                    record.get("ocr_character_count"),
+                    record.get("ocr_pages_processed"),
+                    record.get("ocr_pages_with_text", 0),
+                    record.get("ocr_language"),
+                    self._yes_no(
+                        record.get("has_normalized_document")
+                    ),
+                    record.get("normalized_document_page_count"),
+                    record.get("normalized_document_text_span_count"),
+                    record.get("normalized_document_word_count"),
+                    record.get("normalized_document_character_count"),
+                    record.get(
+                        "normalized_document_normalized_character_count"
+                    ),
+                    record.get(
+                        "normalized_document_pages_with_text"
+                    ),
+                    record.get("image_count"),
+                    record.get("image_fingerprint_count"),
+                    record.get("barcode_count"),
+                    record.get("barcode_formats"),
+                    record.get("barcode_pages"),
+                    record.get("printed_numeric_line_count"),
+                    record.get("printed_numeric_line_sources"),
+                    record.get("printed_numeric_digit_total"),
+                    record.get("valid_numeric_line_count"),
+                    record.get("invalid_numeric_line_count"),
+                    record.get("inconclusive_numeric_line_count"),
+                    record.get("barcode_line_match_count"),
+                    record.get("barcode_line_mismatch_count"),
+                    record.get("barcode_line_inconclusive_count"),
+                    record.get("evidence_count"),
+                ]
+            )
+
+        self._style_worksheet(
+            worksheet=worksheet,
+            freeze_panes="A2",
+            auto_filter=False,
+        )
+
+        self._set_column_widths(
+            worksheet,
+            [
+                38, 38, 24, 18, 20, 68, 12, 36, 32, 32, 32,
+                24, 24, 16, 20, 24, 28, 18, 24, 24, 16, 22,
+                20, 22, 22, 24, 26, 26, 18, 22, 18, 28, 22,
+                22, 28, 20, 16, 16, 18, 20, 20, 20, 18,
+            ],
+        )
+
+        self._add_excel_table(
+            worksheet=worksheet,
+            table_name="DocDNA_DadosTecnicos",
+        )
+
+        return len(records)
+
+    def _build_images_sheet(
+        self,
+        worksheet,
+        export_view: dict[str, Any],
+    ) -> int:
+        headers = [
+            "Documento",
+            "ID da análise",
+            "Imagens extraídas no documento",
+            "Índice do fingerprint",
+            "Página",
+            "Largura",
+            "Altura",
+            "MIME type",
+            "DPI",
+            "Descrição",
+            "Confiança",
+            "SHA-256 da imagem",
+            "Perceptual hash",
+            "Average hash",
+            "Difference hash",
+            "Posição X",
+            "Posição Y",
+            "Largura da região",
+            "Altura da região",
+        ]
+
+        worksheet.append(headers)
+
+        records = export_view.get(
+            "images",
+            [],
+        )
+
+        if not records:
+            worksheet.append(
+                [
+                    "Nenhum fingerprint de imagem foi produzido para este lote.",
+                ]
+                + [None] * (len(headers) - 1)
+            )
+
+        for record in records:
+            worksheet.append(
+                [
+                    record.get("filename"),
+                    record.get("analysis_id"),
+                    record.get("total_extracted_images"),
+                    record.get("fingerprint_index"),
+                    record.get("page_number"),
+                    record.get("width"),
+                    record.get("height"),
+                    record.get("mime_type"),
+                    record.get("dpi"),
+                    record.get("description"),
+                    record.get("confidence"),
+                    record.get("image_hash"),
+                    record.get("perceptual_hash"),
+                    record.get("average_hash"),
+                    record.get("difference_hash"),
+                    record.get("location_x"),
+                    record.get("location_y"),
+                    record.get("location_width"),
+                    record.get("location_height"),
+                ]
+            )
+
+        self._style_worksheet(
+            worksheet=worksheet,
+            freeze_panes="A2",
+            auto_filter=False,
+        )
+
+        self._set_column_widths(
+            worksheet,
+            [
+                38, 38, 26, 22, 12, 14, 14, 22, 16, 54,
+                18, 68, 38, 38, 38, 16, 16, 20, 20,
+            ],
+        )
+
+        self._add_excel_table(
+            worksheet=worksheet,
+            table_name="DocDNA_Imagens",
         )
 
         return len(records)
