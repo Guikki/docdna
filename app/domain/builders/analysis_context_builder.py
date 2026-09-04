@@ -76,7 +76,8 @@ class AnalysisContextBuilder:
         visual_concealment_analysis = (
             VisualConcealmentAnalysisService()
             .analyze(
-                normalized_document
+                normalized_document,
+                pdf_path=source,
             )
         )
 
@@ -86,7 +87,7 @@ class AnalysisContextBuilder:
                 pdf_path=source,
                 findings=(
                     visual_concealment_analysis
-                    .white_text_findings
+                    .text_concealment_findings
                 ),
             )
         )

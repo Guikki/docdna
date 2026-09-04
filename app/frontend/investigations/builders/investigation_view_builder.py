@@ -1967,6 +1967,13 @@ class InvestigationViewBuilder:
             )
         )
 
+        low_contrast_text_count = int(
+            analysis.get(
+                "visual_concealment_low_contrast_text_count",
+                0,
+            )
+        )
+
         tiny_text_count = int(
             analysis.get(
                 "visual_concealment_tiny_text_count",
@@ -2012,8 +2019,9 @@ class InvestigationViewBuilder:
                 summary = (
                     "Nenhum padrão textual foi classificado como Prompt Injection, "
                     "porém foram identificados conteúdos com características de "
-                    "ocultação visual, como fonte branca ou quase branca e/ou tamanho "
-                    "tipográfico reduzido. Recomenda-se revisão humana."
+                    "ocultação visual, como fonte branca ou quase branca, baixo "
+                    "contraste em relação ao fundo e/ou tamanho tipográfico reduzido. "
+                    "Recomenda-se revisão humana."
                 )
             elif has_visual_concealment:
                 summary = (
@@ -2066,6 +2074,11 @@ class InvestigationViewBuilder:
                 f"{visual_concealment_count}",
                 f"{white_text_count} branco/quase branco",
             ]
+
+            if low_contrast_text_count > 0:
+                parts.append(
+                    f"{low_contrast_text_count} baixo contraste"
+                )
 
             if tiny_text_count > 0:
                 parts.append(

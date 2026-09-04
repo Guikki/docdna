@@ -524,10 +524,17 @@ class AnalysisViewBuilder:
             in formatted_visual_concealment_locations
         }
 
-        for finding_index, finding in enumerate(
-            formatted_visual_concealment[
+        locatable_concealment_findings = [
+            *formatted_visual_concealment[
                 "white_text_findings"
             ],
+            *formatted_visual_concealment[
+                "low_contrast_text_findings"
+            ],
+        ]
+
+        for finding_index, finding in enumerate(
+            locatable_concealment_findings,
             start=1,
         ):
             finding[
@@ -1150,6 +1157,12 @@ class AnalysisViewBuilder:
                 ]
             ),
 
+            "visual_concealment_low_contrast_text_count": (
+                formatted_visual_concealment[
+                    "low_contrast_text_count"
+                ]
+            ),
+
             "visual_concealment_tiny_text_count": (
                 formatted_visual_concealment[
                     "tiny_text_count"
@@ -1171,6 +1184,12 @@ class AnalysisViewBuilder:
             "visual_concealment_white_text_findings": (
                 formatted_visual_concealment[
                     "white_text_findings"
+                ]
+            ),
+
+            "visual_concealment_low_contrast_text_findings": (
+                formatted_visual_concealment[
+                    "low_contrast_text_findings"
                 ]
             ),
 
@@ -2041,10 +2060,12 @@ class AnalysisViewBuilder:
                 "has_findings": False,
                 "total_findings": 0,
                 "white_text_count": 0,
+                "low_contrast_text_count": 0,
                 "tiny_text_count": 0,
                 "highest_confidence": 0.0,
                 "highest_confidence_label": "0.0%",
                 "white_text_findings": [],
+                "low_contrast_text_findings": [],
                 "tiny_text_evidences": [],
             }
 
@@ -2165,6 +2186,218 @@ class AnalysisViewBuilder:
                 }
             )
 
+        low_contrast_text_findings = []
+
+        for finding in getattr(
+            analysis,
+            "low_contrast_text_findings",
+            (),
+        ):
+            box = getattr(
+                finding,
+                "bounding_box",
+                None,
+            )
+
+            signals = list(
+                getattr(
+                    finding,
+                    "signals",
+                    (),
+                )
+            )
+
+            contrast_ratio = getattr(
+                finding,
+                "contrast_ratio",
+                None,
+            )
+            contrast_threshold = getattr(
+                finding,
+                "contrast_threshold",
+                None,
+            )
+            contrast_level = getattr(
+                finding,
+                "contrast_level",
+                None,
+            )
+            background_dominance_ratio = getattr(
+                finding,
+                "background_dominance_ratio",
+                None,
+            )
+            sampling_method = getattr(
+                finding,
+                "background_sampling_method",
+                None,
+            )
+
+            low_contrast_text_findings.append(
+                {
+                    "code": getattr(
+                        finding,
+                        "code",
+                        "low_contrast_text",
+                    ),
+                    "detector": getattr(
+                        finding,
+                        "detector",
+                        "low_contrast_text_detector",
+                    ),
+                    "page_number": getattr(
+                        finding,
+                        "page_number",
+                        None,
+                    ),
+                    "text": getattr(
+                        finding,
+                        "text",
+                        "",
+                    ),
+                    "font_name": getattr(
+                        finding,
+                        "font_name",
+                        "Não informada",
+                    ),
+                    "font_size": self._format_decimal(
+                        getattr(
+                            finding,
+                            "font_size",
+                            0.0,
+                        )
+                    ),
+                    "font_color_hex": getattr(
+                        finding,
+                        "font_color_hex",
+                        "Não informada",
+                    ),
+                    "background_color_hex": (
+                        getattr(
+                            finding,
+                            "background_color_hex",
+                            None,
+                        )
+                        or "Não informada"
+                    ),
+                    "font_relative_luminance": getattr(
+                        finding,
+                        "font_relative_luminance",
+                        None,
+                    ),
+                    "font_relative_luminance_label": (
+                        self._format_optional_decimal(
+                            getattr(
+                                finding,
+                                "font_relative_luminance",
+                                None,
+                            ),
+                            decimals=4,
+                        )
+                    ),
+                    "background_relative_luminance": getattr(
+                        finding,
+                        "background_relative_luminance",
+                        None,
+                    ),
+                    "background_relative_luminance_label": (
+                        self._format_optional_decimal(
+                            getattr(
+                                finding,
+                                "background_relative_luminance",
+                                None,
+                            ),
+                            decimals=4,
+                        )
+                    ),
+                    "contrast_ratio": contrast_ratio,
+                    "contrast_ratio_label": (
+                        self._format_contrast_ratio(
+                            contrast_ratio
+                        )
+                    ),
+                    "contrast_threshold": contrast_threshold,
+                    "contrast_threshold_label": (
+                        self._format_contrast_ratio(
+                            contrast_threshold
+                        )
+                    ),
+                    "contrast_level": contrast_level,
+                    "contrast_level_label": (
+                        self._translate_contrast_level(
+                            contrast_level
+                        )
+                    ),
+                    "background_sampling_method": sampling_method,
+                    "background_sampling_method_label": (
+                        self._translate_background_sampling_method(
+                            sampling_method
+                        )
+                    ),
+                    "background_dominance_ratio": (
+                        background_dominance_ratio
+                    ),
+                    "background_dominance_label": (
+                        self._format_ratio_as_percentage(
+                            background_dominance_ratio
+                        )
+                        if background_dominance_ratio
+                        is not None
+                        else "Não informada"
+                    ),
+                    "confidence": getattr(
+                        finding,
+                        "confidence",
+                        0.0,
+                    ),
+                    "confidence_label": (
+                        self._format_ratio_as_percentage(
+                            getattr(
+                                finding,
+                                "confidence",
+                                0.0,
+                            )
+                        )
+                    ),
+                    "signals": signals,
+                    "signal_labels": [
+                        self._translate_concealment_signal(
+                            signal
+                        )
+                        for signal in signals
+                    ],
+                    "is_near_white": bool(
+                        getattr(
+                            finding,
+                            "is_near_white",
+                            False,
+                        )
+                    ),
+                    "is_low_contrast": bool(
+                        getattr(
+                            finding,
+                            "is_low_contrast",
+                            True,
+                        )
+                    ),
+                    "is_extreme_low_contrast": bool(
+                        getattr(
+                            finding,
+                            "is_extreme_low_contrast",
+                            False,
+                        )
+                    ),
+                    "coordinates_label": (
+                        self._format_bounding_box(
+                            box
+                        )
+                    ),
+                    "contrast_reference": (
+                        "Razão de contraste por luminância relativa WCAG"
+                    ),
+                }
+            )
+
         tiny_text_evidences = []
 
         for evidence in getattr(
@@ -2269,6 +2502,7 @@ class AnalysisViewBuilder:
                     "total_findings",
                     (
                         len(white_text_findings)
+                        + len(low_contrast_text_findings)
                         + len(tiny_text_evidences)
                     ),
                 )
@@ -2278,6 +2512,13 @@ class AnalysisViewBuilder:
                     analysis,
                     "white_text_count",
                     len(white_text_findings),
+                )
+            ),
+            "low_contrast_text_count": int(
+                getattr(
+                    analysis,
+                    "low_contrast_text_count",
+                    len(low_contrast_text_findings),
                 )
             ),
             "tiny_text_count": int(
@@ -2297,6 +2538,9 @@ class AnalysisViewBuilder:
             ),
             "white_text_findings": (
                 white_text_findings
+            ),
+            "low_contrast_text_findings": (
+                low_contrast_text_findings
             ),
             "tiny_text_evidences": (
                 tiny_text_evidences
@@ -2320,11 +2564,90 @@ class AnalysisViewBuilder:
             "instruction_like_text": (
                 "Conteúdo com característica instrucional"
             ),
+            "low_contrast": (
+                "Contraste inferior ao limiar técnico do DocDNA"
+            ),
+            "extreme_low_contrast": (
+                "Contraste extremamente baixo"
+            ),
+            "background_color_estimated": (
+                "Cor de fundo estimada a partir da região visual"
+            ),
+            "high_background_dominance": (
+                "Fundo local com alta predominância cromática"
+            ),
         }
 
         return labels.get(
             signal,
             signal,
+        )
+
+    def _format_contrast_ratio(
+        self,
+        value: Any,
+    ) -> str:
+        try:
+            number = float(value)
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return "Não informado"
+
+        return f"{number:.2f}:1"
+
+    def _format_optional_decimal(
+        self,
+        value: Any,
+        *,
+        decimals: int = 4,
+    ) -> str:
+        if value is None:
+            return "Não informada"
+
+        return self._format_decimal(
+            value,
+            decimals=decimals,
+        )
+
+    @staticmethod
+    def _translate_contrast_level(
+        level: str | None,
+    ) -> str:
+        labels = {
+            "low_contrast": (
+                "Baixo contraste"
+            ),
+            "extreme_low_contrast": (
+                "Contraste extremamente baixo"
+            ),
+        }
+
+        if not level:
+            return "Não classificado"
+
+        return labels.get(
+            level,
+            level,
+        )
+
+    @staticmethod
+    def _translate_background_sampling_method(
+        method: str | None,
+    ) -> str:
+        labels = {
+            "dominant_quantized_bbox_color": (
+                "Cor dominante quantizada na BoundingBox"
+            ),
+        }
+
+        if not method:
+            return "Não informado"
+
+        return labels.get(
+            method,
+            method,
         )
 
     def _format_bounding_box(

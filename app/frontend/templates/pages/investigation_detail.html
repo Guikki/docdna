@@ -1835,9 +1835,10 @@
                 <p>
                     Esta etapa procura propriedades visuais capazes de
                     tornar texto pouco perceptível ao usuário, como fonte
-                    branca ou quase branca e tamanho tipográfico muito
-                    reduzido. O apontamento não declara fraude e não exige
-                    que o conteúdo seja classificado como Prompt Injection.
+                    branca ou quase branca, contraste muito baixo em relação
+                    ao fundo e tamanho tipográfico muito reduzido. O apontamento
+                    não declara fraude e não exige que o conteúdo seja
+                    classificado como Prompt Injection.
                 </p>
             </div>
 
@@ -1862,6 +1863,16 @@
 
                         <dd>
                             {{ analysis.visual_concealment_white_text_count }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt>
+                            Texto com baixo contraste
+                        </dt>
+
+                        <dd>
+                            {{ analysis.visual_concealment_low_contrast_text_count }}
                         </dd>
                     </div>
 
@@ -2110,6 +2121,263 @@
 
                 {% endif %}
 
+                {% if analysis.visual_concealment_low_contrast_text_findings %}
+
+                    <div class="investigation-detail-list">
+
+                        {% for finding in analysis.visual_concealment_low_contrast_text_findings %}
+
+                            <details class="investigation-detail-item" open>
+
+                                <summary>
+                                    <span>
+                                        {{ finding.contrast_level_label }}
+                                        · página
+                                        {{ finding.page_number or "não informada" }}
+                                    </span>
+
+                                    <small>
+                                        Contraste
+                                        {{ finding.contrast_ratio_label }}
+                                    </small>
+                                </summary>
+
+                                <div class="investigation-detail-item__content">
+
+                                    <div class="investigation-technical-note">
+                                        <strong>
+                                            Conteúdo identificado
+                                        </strong>
+
+                                        <span class="investigation-break-value">
+                                            “{{ finding.text }}”
+                                        </span>
+                                    </div>
+
+                                    <div class="investigation-capability-note">
+                                        <strong>
+                                            Critério técnico de contraste
+                                        </strong>
+
+                                        <p>
+                                            O DocDNA mede a razão de contraste por
+                                            luminância relativa. Nesta implementação,
+                                            valores abaixo de {{ finding.contrast_threshold_label }}
+                                            constituem indicador técnico de possível
+                                            ocultação visual; o resultado não constitui,
+                                            isoladamente, determinação de fraude.
+                                        </p>
+                                    </div>
+
+                                    <dl
+                                        class="
+                                            investigation-data-table
+                                            investigation-data-table--compact
+                                        "
+                                    >
+
+                                        <div>
+                                            <dt>Fonte</dt>
+                                            <dd>{{ finding.font_name }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Tamanho</dt>
+                                            <dd>{{ finding.font_size }} pt</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Cor do texto</dt>
+                                            <dd>{{ finding.font_color_hex }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Cor estimada do fundo</dt>
+                                            <dd>{{ finding.background_color_hex }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Razão de contraste</dt>
+                                            <dd>{{ finding.contrast_ratio_label }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Limiar DocDNA</dt>
+                                            <dd>{{ finding.contrast_threshold_label }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Classificação</dt>
+                                            <dd>{{ finding.contrast_level_label }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Luminância relativa do texto</dt>
+                                            <dd>{{ finding.font_relative_luminance_label }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Luminância relativa do fundo</dt>
+                                            <dd>{{ finding.background_relative_luminance_label }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Predominância do fundo estimado</dt>
+                                            <dd>{{ finding.background_dominance_label }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Método de amostragem do fundo</dt>
+                                            <dd>{{ finding.background_sampling_method_label }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Referência da métrica</dt>
+                                            <dd>{{ finding.contrast_reference }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Detector</dt>
+                                            <dd>{{ finding.detector }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Confiança técnica</dt>
+                                            <dd>{{ finding.confidence_label }}</dd>
+                                        </div>
+
+                                        <div>
+                                            <dt>Coordenadas</dt>
+                                            <dd>{{ finding.coordinates_label }}</dd>
+                                        </div>
+
+                                    </dl>
+
+                                    {% if finding.signal_labels %}
+
+                                        <div class="investigation-static-list">
+
+                                            {% for signal in finding.signal_labels %}
+
+                                                <article class="investigation-static-item">
+                                                    <strong>
+                                                        {{ signal }}
+                                                    </strong>
+                                                </article>
+
+                                            {% endfor %}
+
+                                        </div>
+
+                                    {% endif %}
+
+                                    {% set location = finding.visual_location %}
+
+                                    {% if location and location.located %}
+
+                                        {% if location.annotated_image_url %}
+
+                                            <div class="investigation-technical-note">
+
+                                                <strong>
+                                                    Região de baixo contraste destacada no documento
+                                                </strong>
+
+                                                <span>
+                                                    O retângulo indica a região textual que originou
+                                                    a medição de contraste exibida acima.
+                                                </span>
+
+                                                <a
+                                                    href="{{ location.annotated_image_url }}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    <img
+                                                        src="{{ location.annotated_image_url }}"
+                                                        alt="Página {{ location.page_number }} com texto de baixo contraste destacado"
+                                                        loading="lazy"
+                                                        style="
+                                                            display: block;
+                                                            width: 100%;
+                                                            max-width: 1100px;
+                                                            height: auto;
+                                                            margin-top: 12px;
+                                                            border-radius: 10px;
+                                                        "
+                                                    >
+                                                </a>
+
+                                            </div>
+
+                                        {% endif %}
+
+                                        <dl
+                                            class="
+                                                investigation-data-table
+                                                investigation-data-table--compact
+                                            "
+                                        >
+
+                                            <div>
+                                                <dt>Página localizada</dt>
+                                                <dd>{{ location.page_number }}</dd>
+                                            </div>
+
+                                            <div>
+                                                <dt>Coordenadas nativas</dt>
+                                                <dd>{{ location.coordinates_label }}</dd>
+                                            </div>
+
+                                            <div>
+                                                <dt>Método de localização</dt>
+                                                <dd>BoundingBox nativo do PDF</dd>
+                                            </div>
+
+                                        </dl>
+
+                                        <div class="investigation-location__actions">
+
+                                            {% if location.annotated_image_url %}
+
+                                                <a
+                                                    class="btn btn-secondary"
+                                                    href="{{ location.annotated_image_url }}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    Abrir região destacada
+                                                </a>
+
+                                            {% endif %}
+
+                                            {% if location.source_image_url %}
+
+                                                <a
+                                                    class="btn btn-secondary"
+                                                    href="{{ location.source_image_url }}"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >
+                                                    Abrir página original
+                                                </a>
+
+                                            {% endif %}
+
+                                        </div>
+
+                                    {% endif %}
+
+                                </div>
+
+                            </details>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% endif %}
+
                 {% if analysis.visual_concealment_tiny_text_evidences %}
 
                     <div class="investigation-detail-list">
@@ -2191,8 +2459,9 @@
 
                     <p>
                         Os verificadores executados nesta etapa não
-                        identificaram texto branco/quase branco nem fonte
-                        abaixo do limite técnico configurado.
+                        identificaram texto branco/quase branco, texto com
+                        contraste abaixo do limiar técnico nem fonte abaixo
+                        do limite de tamanho configurado.
                     </p>
                 </div>
 

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import pytest
 
+from app.domain.concealment.models.text_concealment_finding import (
+    TextConcealmentFinding,
+)
 from app.domain.concealment.services.visual_concealment_analysis_service import (
     VisualConcealmentAnalysisService,
 )
@@ -220,3 +223,156 @@ def test_should_reject_invalid_document() -> None:
         VisualConcealmentAnalysisService().analyze(
             None  # type: ignore[arg-type]
         )
+
+class _LowContrastDetectorStub:
+    def __init__(
+        self,
+        findings: tuple[TextConcealmentFinding, ...],
+    ) -> None:
+        self._findings = findings
+        self.calls: list[tuple[Document, str]] = []
+
+    def detect(
+        self,
+        document: Document,
+        *,
+        pdf_path: str,
+    ) -> list[TextConcealmentFinding]:
+        self.calls.append((document, pdf_path))
+        return list(self._findings)
+
+
+def _low_contrast_finding(
+    *,
+    confidence: float = 0.94,
+) -> TextConcealmentFinding:
+    return TextConcealmentFinding(
+        code="low_contrast_text",
+        detector="low_contrast_text_detector",
+        page_number=1,
+        text="Texto de baixo contraste.",
+        bounding_box=BoundingBox(
+            left=100.0,
+            top=160.0,
+            right=350.0,
+            bottom=172.0,
+        ),
+        font_name="Calibri",
+        font_size=8.0,
+        font_color_hex="#F7F7F7",
+        confidence=confidence,
+        signals=(
+            "low_contrast",
+            "background_color_estimated",
+        ),
+        is_near_white=True,
+        is_small_text=False,
+        is_relative_small_text=False,
+        is_instruction_like=False,
+        background_color_hex="#FFFFFF",
+        font_relative_luminance=0.930111,
+        background_relative_luminance=1.0,
+        contrast_ratio=1.07,
+        contrast_threshold=2.0,
+        contrast_level="extreme_low_contrast",
+        background_sampling_method="dominant_quantized_bbox_color",
+        background_dominance_ratio=0.91,
+        is_low_contrast=True,
+        is_extreme_low_contrast=True,
+    )
+
+
+def test_should_integrate_low_contrast_when_pdf_path_is_available() -> None:
+    finding = _low_contrast_finding()
+    detector = _LowContrastDetectorStub((finding,))
+    document = _document(
+        _span(
+            text="Texto normal.",
+            size=11.0,
+            color_hex="#000000",
+        )
+    )
+
+    result = VisualConcealmentAnalysisService(
+        low_contrast_text_detector=detector,  # type: ignore[arg-type]
+    ).analyze(
+        document,
+        pdf_path="document.pdf",
+    )
+
+    assert result.low_contrast_text_count == 1
+    assert result.low_contrast_text_findings == (finding,)
+    assert result.total_findings == 1
+    assert result.has_findings is True
+    assert detector.calls == [(document, "document.pdf")]
+
+
+def test_should_not_execute_low_contrast_without_pdf_path() -> None:
+    detector = _LowContrastDetectorStub(
+        (_low_contrast_finding(),)
+    )
+
+    result = VisualConcealmentAnalysisService(
+        low_contrast_text_detector=detector,  # type: ignore[arg-type]
+    ).analyze(
+        _document(
+            _span(
+                text="Texto normal.",
+                size=11.0,
+                color_hex="#000000",
+            )
+        )
+    )
+
+    assert result.low_contrast_text_count == 0
+    assert detector.calls == []
+
+
+def test_text_concealment_findings_should_join_white_and_low_contrast() -> None:
+    low_contrast = _low_contrast_finding()
+    detector = _LowContrastDetectorStub((low_contrast,))
+
+    result = VisualConcealmentAnalysisService(
+        low_contrast_text_detector=detector,  # type: ignore[arg-type]
+    ).analyze(
+        _document(
+            _span(
+                text="Texto branco.",
+                size=6.0,
+                color_hex="#FFFFFF",
+            )
+        ),
+        pdf_path="document.pdf",
+    )
+
+    assert result.white_text_count == 1
+    assert result.low_contrast_text_count == 1
+    assert len(result.text_concealment_findings) == 2
+    assert result.text_concealment_findings[0].detector == (
+        "white_text_detector"
+    )
+    assert result.text_concealment_findings[1] == low_contrast
+
+
+def test_highest_confidence_should_include_low_contrast() -> None:
+    low_contrast = _low_contrast_finding(
+        confidence=0.99,
+    )
+    detector = _LowContrastDetectorStub((low_contrast,))
+
+    result = VisualConcealmentAnalysisService(
+        low_contrast_text_detector=detector,  # type: ignore[arg-type]
+    ).analyze(
+        _document(
+            _span(
+                text="Texto minúsculo.",
+                size=2.0,
+                color_hex="#000000",
+            )
+        ),
+        pdf_path="document.pdf",
+    )
+
+    assert result.tiny_text_count == 1
+    assert result.low_contrast_text_count == 1
+    assert result.highest_confidence == pytest.approx(0.99)

@@ -30,6 +30,17 @@ class TextConcealmentFinding:
     is_relative_small_text: bool
     is_instruction_like: bool
 
+    background_color_hex: str | None = None
+    font_relative_luminance: float | None = None
+    background_relative_luminance: float | None = None
+    contrast_ratio: float | None = None
+    contrast_threshold: float | None = None
+    contrast_level: str | None = None
+    background_sampling_method: str | None = None
+    background_dominance_ratio: float | None = None
+    is_low_contrast: bool = False
+    is_extreme_low_contrast: bool = False
+
     @property
     def signal_count(self) -> int:
         return len(self.signals)
