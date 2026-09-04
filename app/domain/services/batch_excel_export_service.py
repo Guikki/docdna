@@ -1281,13 +1281,27 @@ class BatchExcelExportService:
             "Fonte",
             "Tamanho da fonte",
             "Cor da fonte",
+            "Cor estimada do fundo",
+            "Luminância relativa da fonte",
+            "Luminância relativa do fundo",
+            "Razão de contraste",
+            "Limiar de contraste",
+            "Classificação de contraste",
+            "Predominância do fundo",
+            "Método de amostragem",
+            "Referência da métrica",
             "Confiança",
             "Sinais técnicos",
             "Texto branco/quase branco",
+            "Baixo contraste",
+            "Contraste extremamente baixo",
             "Texto pequeno",
             "Pequeno relativo à página",
             "Conteúdo instrucional",
             "Coordenadas",
+            "Localizado visualmente",
+            "Imagem de origem",
+            "Imagem anotada",
         ]
 
         worksheet.append(headers)
@@ -1331,23 +1345,127 @@ class BatchExcelExportService:
                     record.get("font_name"),
                     record.get("font_size"),
                     record.get("font_color_hex"),
-                    self._ratio_value(record.get("confidence")),
+                    record.get("background_color_hex"),
+                    self._number_value(
+                        record.get(
+                            "font_relative_luminance"
+                        )
+                    ),
+                    self._number_value(
+                        record.get(
+                            "background_relative_luminance"
+                        )
+                    ),
+                    self._number_value(
+                        record.get(
+                            "contrast_ratio"
+                        )
+                    ),
+                    self._number_value(
+                        record.get(
+                            "contrast_threshold"
+                        )
+                    ),
+                    (
+                        record.get(
+                            "contrast_level_label"
+                        )
+                        or record.get(
+                            "contrast_level"
+                        )
+                    ),
+                    self._ratio_value(
+                        record.get(
+                            "background_dominance_ratio"
+                        )
+                    ),
+                    (
+                        record.get(
+                            "background_sampling_method_label"
+                        )
+                        or record.get(
+                            "background_sampling_method"
+                        )
+                    ),
+                    record.get("contrast_reference"),
+                    self._ratio_value(
+                        record.get("confidence")
+                    ),
                     self._join_values(signal_labels),
-                    self._yes_no(record.get("is_near_white")),
-                    self._yes_no(record.get("is_small_text")),
                     self._yes_no(
-                        record.get("is_relative_small_text")
+                        record.get("is_near_white")
                     ),
                     self._yes_no(
-                        record.get("is_instruction_like")
+                        record.get("is_low_contrast")
+                    ),
+                    self._yes_no(
+                        record.get(
+                            "is_extreme_low_contrast"
+                        )
+                    ),
+                    self._yes_no(
+                        record.get("is_small_text")
+                    ),
+                    self._yes_no(
+                        record.get(
+                            "is_relative_small_text"
+                        )
+                    ),
+                    self._yes_no(
+                        record.get(
+                            "is_instruction_like"
+                        )
                     ),
                     record.get("coordinates_label"),
+                    self._yes_no(
+                        record.get("located")
+                    ),
+                    record.get("source_image_url"),
+                    record.get("annotated_image_url"),
                 ]
             )
 
-        for cell in worksheet["M"][1:]:
-            if isinstance(cell.value, (int, float)):
-                cell.number_format = "0.0%"
+            row_index = worksheet.max_row
+
+            self._set_hyperlink(
+                worksheet.cell(
+                    row=row_index,
+                    column=32,
+                )
+            )
+
+            self._set_hyperlink(
+                worksheet.cell(
+                    row=row_index,
+                    column=33,
+                )
+            )
+
+        for column in ("N", "O"):
+            for cell in worksheet[column][1:]:
+                if isinstance(
+                    cell.value,
+                    (int, float),
+                ):
+                    cell.number_format = "0.0000"
+
+        for column in ("P", "Q"):
+            for cell in worksheet[column][1:]:
+                if isinstance(
+                    cell.value,
+                    (int, float),
+                ):
+                    cell.number_format = (
+                        '0.00":1"'
+                    )
+
+        for column in ("S", "V"):
+            for cell in worksheet[column][1:]:
+                if isinstance(
+                    cell.value,
+                    (int, float),
+                ):
+                    cell.number_format = "0.0%"
 
         self._style_worksheet(
             worksheet=worksheet,
@@ -1359,7 +1477,9 @@ class BatchExcelExportService:
             worksheet,
             [
                 38, 38, 18, 32, 32, 40, 12, 80, 70,
-                28, 18, 20, 16, 55, 24, 18, 24, 24, 48,
+                28, 18, 20, 24, 24, 24, 18, 18, 32,
+                22, 42, 44, 16, 55, 24, 18, 28, 18,
+                24, 24, 48, 22, 62, 62,
             ],
         )
 
@@ -1392,6 +1512,12 @@ class BatchExcelExportService:
             "Fonte",
             "Tamanho da fonte",
             "Cor da fonte",
+            "Cor estimada do fundo",
+            "Razão de contraste",
+            "Limiar de contraste",
+            "Classificação de contraste",
+            "Predominância do fundo",
+            "Método de amostragem",
             "Coordenadas",
             "Localizado",
             "Mensagem",
@@ -1429,12 +1555,46 @@ class BatchExcelExportService:
                     record.get("top"),
                     record.get("width"),
                     record.get("height"),
-                    self._ratio_value(record.get("confidence")),
+                    self._ratio_value(
+                        record.get("confidence")
+                    ),
                     record.get("font_name"),
                     record.get("font_size"),
                     record.get("font_color_hex"),
+                    record.get("background_color_hex"),
+                    self._number_value(
+                        record.get("contrast_ratio")
+                    ),
+                    self._number_value(
+                        record.get(
+                            "contrast_threshold"
+                        )
+                    ),
+                    (
+                        record.get(
+                            "contrast_level_label"
+                        )
+                        or record.get(
+                            "contrast_level"
+                        )
+                    ),
+                    self._ratio_value(
+                        record.get(
+                            "background_dominance_ratio"
+                        )
+                    ),
+                    (
+                        record.get(
+                            "background_sampling_method_label"
+                        )
+                        or record.get(
+                            "background_sampling_method"
+                        )
+                    ),
                     record.get("coordinates_label"),
-                    self._yes_no(record.get("located")),
+                    self._yes_no(
+                        record.get("located")
+                    ),
                     record.get("message"),
                     record.get("source_image_url"),
                     record.get("annotated_image_url"),
@@ -1442,21 +1602,43 @@ class BatchExcelExportService:
             )
 
             row_index = worksheet.max_row
+
             self._set_hyperlink(
                 worksheet.cell(
                     row=row_index,
-                    column=20,
+                    column=26,
                 )
             )
+
             self._set_hyperlink(
                 worksheet.cell(
                     row=row_index,
-                    column=21,
+                    column=27,
                 )
             )
 
         for cell in worksheet["M"][1:]:
-            if isinstance(cell.value, (int, float)):
+            if isinstance(
+                cell.value,
+                (int, float),
+            ):
+                cell.number_format = "0.0%"
+
+        for column in ("R", "S"):
+            for cell in worksheet[column][1:]:
+                if isinstance(
+                    cell.value,
+                    (int, float),
+                ):
+                    cell.number_format = (
+                        '0.00":1"'
+                    )
+
+        for cell in worksheet["U"][1:]:
+            if isinstance(
+                cell.value,
+                (int, float),
+            ):
                 cell.number_format = "0.0%"
 
         self._style_worksheet(
@@ -1470,7 +1652,8 @@ class BatchExcelExportService:
             [
                 38, 38, 28, 18, 34, 42, 12, 80,
                 14, 14, 14, 14, 16, 28, 18, 20,
-                48, 14, 60, 62, 62,
+                24, 18, 18, 32, 22, 42, 48, 14,
+                60, 62, 62,
             ],
         )
 
@@ -2415,6 +2598,18 @@ class BatchExcelExportService:
             worksheet.column_dimensions[
                 get_column_letter(index)
             ].width = width
+
+    def _number_value(
+        self,
+        value: Any,
+    ) -> float | None:
+        if value is None:
+            return None
+
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
     def _ratio_value(
         self,

@@ -937,147 +937,364 @@ class BatchExportViewBuilder:
                 or []
             )
 
+            low_contrast_findings = (
+                analysis.get(
+                    "visual_concealment_low_contrast_text_findings",
+                    [],
+                )
+                or []
+            )
+
             for finding_index, finding in enumerate(
                 white_findings,
                 start=1,
             ):
+                visual_location = (
+                    finding.get(
+                        "visual_location"
+                    )
+                    or {}
+                )
+
                 result.append(
                     {
-                        "analysis_id": (
-                            analysis_id
-                        ),
-
-                        "filename": (
-                            filename
-                        ),
-
-                        "finding_index": (
-                            finding_index
-                        ),
-
-                        "concealment_type": (
-                            "white_text"
-                        ),
-
+                        "analysis_id": analysis_id,
+                        "filename": filename,
+                        "finding_index": finding_index,
+                        "concealment_type": "white_text",
                         "concealment_type_label": (
                             "Texto branco ou quase branco"
                         ),
-
-                        "code": (
-                            finding.get(
-                                "code"
-                            )
+                        "code": finding.get("code"),
+                        "detector": finding.get("detector"),
+                        "page_number": finding.get(
+                            "page_number"
                         ),
-
-                        "detector": (
-                            finding.get(
-                                "detector"
-                            )
-                        ),
-
-                        "page_number": (
-                            finding.get(
-                                "page_number"
-                            )
-                        ),
-
-                        "text": (
-                            finding.get(
-                                "text"
-                            )
-                        ),
-
+                        "text": finding.get("text"),
                         "description": None,
-
-                        "font_name": (
+                        "font_name": finding.get(
+                            "font_name"
+                        ),
+                        "font_size": finding.get(
+                            "font_size"
+                        ),
+                        "font_color_hex": finding.get(
+                            "font_color_hex"
+                        ),
+                        "background_color_hex": (
                             finding.get(
-                                "font_name"
+                                "background_color_hex"
                             )
                         ),
-
-                        "font_size": (
+                        "font_relative_luminance": (
                             finding.get(
-                                "font_size"
+                                "font_relative_luminance"
                             )
                         ),
-
-                        "font_color_hex": (
+                        "background_relative_luminance": (
                             finding.get(
-                                "font_color_hex"
+                                "background_relative_luminance"
                             )
                         ),
-
-                        "confidence": (
+                        "contrast_ratio": finding.get(
+                            "contrast_ratio"
+                        ),
+                        "contrast_threshold": finding.get(
+                            "contrast_threshold"
+                        ),
+                        "contrast_level": finding.get(
+                            "contrast_level"
+                        ),
+                        "contrast_level_label": (
                             finding.get(
-                                "confidence"
+                                "contrast_level_label"
                             )
                         ),
+                        "background_dominance_ratio": (
+                            finding.get(
+                                "background_dominance_ratio"
+                            )
+                        ),
+                        "background_sampling_method": (
+                            finding.get(
+                                "background_sampling_method"
+                            )
+                        ),
+                        "background_sampling_method_label": (
+                            finding.get(
+                                "background_sampling_method_label"
+                            )
+                        ),
+                        "contrast_reference": (
+                            finding.get(
+                                "contrast_reference"
+                            )
+                        ),
+                        "confidence": finding.get(
+                            "confidence"
+                        ),
+                        "confidence_label": finding.get(
+                            "confidence_label"
+                        ),
+                        "signals": list(
+                            finding.get(
+                                "signals",
+                                [],
+                            )
+                            or []
+                        ),
+                        "signal_labels": list(
+                            finding.get(
+                                "signal_labels",
+                                [],
+                            )
+                            or []
+                        ),
+                        "is_near_white": bool(
+                            finding.get(
+                                "is_near_white",
+                                False,
+                            )
+                        ),
+                        "is_low_contrast": bool(
+                            finding.get(
+                                "is_low_contrast",
+                                False,
+                            )
+                        ),
+                        "is_extreme_low_contrast": bool(
+                            finding.get(
+                                "is_extreme_low_contrast",
+                                False,
+                            )
+                        ),
+                        "is_small_text": bool(
+                            finding.get(
+                                "is_small_text",
+                                False,
+                            )
+                        ),
+                        "is_relative_small_text": bool(
+                            finding.get(
+                                "is_relative_small_text",
+                                False,
+                            )
+                        ),
+                        "is_instruction_like": bool(
+                            finding.get(
+                                "is_instruction_like",
+                                False,
+                            )
+                        ),
+                        "coordinates_label": finding.get(
+                            "coordinates_label"
+                        ),
+                        "located": bool(
+                            visual_location.get(
+                                "located",
+                                False,
+                            )
+                        ),
+                        "location_message": (
+                            visual_location.get(
+                                "message"
+                            )
+                        ),
+                        "source_image_url": (
+                            visual_location.get(
+                                "source_image_url"
+                            )
+                        ),
+                        "annotated_image_url": (
+                            visual_location.get(
+                                "annotated_image_url"
+                            )
+                        ),
+                    }
+                )
 
+            low_contrast_start_index = (
+                len(white_findings)
+                + 1
+            )
+
+            for finding_index, finding in enumerate(
+                low_contrast_findings,
+                start=low_contrast_start_index,
+            ):
+                visual_location = (
+                    finding.get(
+                        "visual_location"
+                    )
+                    or {}
+                )
+
+                result.append(
+                    {
+                        "analysis_id": analysis_id,
+                        "filename": filename,
+                        "finding_index": finding_index,
+                        "concealment_type": (
+                            "low_contrast_text"
+                        ),
+                        "concealment_type_label": (
+                            "Texto com baixo contraste"
+                        ),
+                        "code": finding.get("code"),
+                        "detector": finding.get(
+                            "detector"
+                        ),
+                        "page_number": finding.get(
+                            "page_number"
+                        ),
+                        "text": finding.get("text"),
+                        "description": (
+                            "Contraste reduzido entre "
+                            "a cor do texto e o fundo "
+                            "estimado da região."
+                        ),
+                        "font_name": finding.get(
+                            "font_name"
+                        ),
+                        "font_size": finding.get(
+                            "font_size"
+                        ),
+                        "font_color_hex": finding.get(
+                            "font_color_hex"
+                        ),
+                        "background_color_hex": (
+                            finding.get(
+                                "background_color_hex"
+                            )
+                        ),
+                        "font_relative_luminance": (
+                            finding.get(
+                                "font_relative_luminance"
+                            )
+                        ),
+                        "background_relative_luminance": (
+                            finding.get(
+                                "background_relative_luminance"
+                            )
+                        ),
+                        "contrast_ratio": finding.get(
+                            "contrast_ratio"
+                        ),
+                        "contrast_threshold": (
+                            finding.get(
+                                "contrast_threshold"
+                            )
+                        ),
+                        "contrast_level": finding.get(
+                            "contrast_level"
+                        ),
+                        "contrast_level_label": (
+                            finding.get(
+                                "contrast_level_label"
+                            )
+                        ),
+                        "background_dominance_ratio": (
+                            finding.get(
+                                "background_dominance_ratio"
+                            )
+                        ),
+                        "background_sampling_method": (
+                            finding.get(
+                                "background_sampling_method"
+                            )
+                        ),
+                        "background_sampling_method_label": (
+                            finding.get(
+                                "background_sampling_method_label"
+                            )
+                        ),
+                        "contrast_reference": (
+                            finding.get(
+                                "contrast_reference"
+                            )
+                        ),
+                        "confidence": finding.get(
+                            "confidence"
+                        ),
                         "confidence_label": (
                             finding.get(
                                 "confidence_label"
                             )
                         ),
-
-                        "signals": (
-                            list(
-                                finding.get(
-                                    "signals",
-                                    [],
-                                )
-                                or []
+                        "signals": list(
+                            finding.get(
+                                "signals",
+                                [],
+                            )
+                            or []
+                        ),
+                        "signal_labels": list(
+                            finding.get(
+                                "signal_labels",
+                                [],
+                            )
+                            or []
+                        ),
+                        "is_near_white": bool(
+                            finding.get(
+                                "is_near_white",
+                                False,
                             )
                         ),
-
-                        "signal_labels": (
-                            list(
-                                finding.get(
-                                    "signal_labels",
-                                    [],
-                                )
-                                or []
+                        "is_low_contrast": bool(
+                            finding.get(
+                                "is_low_contrast",
+                                True,
                             )
                         ),
-
-                        "is_near_white": (
-                            bool(
-                                finding.get(
-                                    "is_near_white",
-                                    False,
-                                )
+                        "is_extreme_low_contrast": bool(
+                            finding.get(
+                                "is_extreme_low_contrast",
+                                False,
                             )
                         ),
-
-                        "is_small_text": (
-                            bool(
-                                finding.get(
-                                    "is_small_text",
-                                    False,
-                                )
+                        "is_small_text": bool(
+                            finding.get(
+                                "is_small_text",
+                                False,
                             )
                         ),
-
-                        "is_relative_small_text": (
-                            bool(
-                                finding.get(
-                                    "is_relative_small_text",
-                                    False,
-                                )
+                        "is_relative_small_text": bool(
+                            finding.get(
+                                "is_relative_small_text",
+                                False,
                             )
                         ),
-
-                        "is_instruction_like": (
-                            bool(
-                                finding.get(
-                                    "is_instruction_like",
-                                    False,
-                                )
+                        "is_instruction_like": bool(
+                            finding.get(
+                                "is_instruction_like",
+                                False,
                             )
                         ),
-
                         "coordinates_label": (
                             finding.get(
                                 "coordinates_label"
+                            )
+                        ),
+                        "located": bool(
+                            visual_location.get(
+                                "located",
+                                False,
+                            )
+                        ),
+                        "location_message": (
+                            visual_location.get(
+                                "message"
+                            )
+                        ),
+                        "source_image_url": (
+                            visual_location.get(
+                                "source_image_url"
+                            )
+                        ),
+                        "annotated_image_url": (
+                            visual_location.get(
+                                "annotated_image_url"
                             )
                         ),
                     }
@@ -1097,103 +1314,69 @@ class BatchExportViewBuilder:
             ):
                 result.append(
                     {
-                        "analysis_id": (
-                            analysis_id
-                        ),
-
-                        "filename": (
-                            filename
-                        ),
-
-                        "finding_index": (
-                            evidence_index
-                        ),
-
-                        "concealment_type": (
-                            "tiny_text"
-                        ),
-
+                        "analysis_id": analysis_id,
+                        "filename": filename,
+                        "finding_index": evidence_index,
+                        "concealment_type": "tiny_text",
                         "concealment_type_label": (
                             "Texto muito pequeno"
                         ),
-
-                        "code": (
-                            evidence.get(
-                                "code"
-                            )
+                        "code": evidence.get("code"),
+                        "detector": evidence.get(
+                            "detector"
                         ),
-
-                        "detector": (
-                            evidence.get(
-                                "detector"
-                            )
+                        "page_number": evidence.get(
+                            "page_number"
                         ),
-
-                        "page_number": (
-                            evidence.get(
-                                "page_number"
-                            )
+                        "text": evidence.get("text"),
+                        "description": evidence.get(
+                            "description"
                         ),
-
-                        "text": (
-                            evidence.get(
-                                "text"
-                            )
+                        "font_name": evidence.get(
+                            "font_name"
                         ),
-
-                        "description": (
-                            evidence.get(
-                                "description"
-                            )
+                        "font_size": evidence.get(
+                            "font_size"
                         ),
-
-                        "font_name": (
-                            evidence.get(
-                                "font_name"
-                            )
+                        "font_color_hex": evidence.get(
+                            "font_color_hex"
                         ),
-
-                        "font_size": (
-                            evidence.get(
-                                "font_size"
-                            )
+                        "background_color_hex": None,
+                        "font_relative_luminance": None,
+                        "background_relative_luminance": None,
+                        "contrast_ratio": None,
+                        "contrast_threshold": None,
+                        "contrast_level": None,
+                        "contrast_level_label": None,
+                        "background_dominance_ratio": None,
+                        "background_sampling_method": None,
+                        "background_sampling_method_label": None,
+                        "contrast_reference": None,
+                        "confidence": evidence.get(
+                            "confidence"
                         ),
-
-                        "font_color_hex": (
-                            evidence.get(
-                                "font_color_hex"
-                            )
-                        ),
-
-                        "confidence": (
-                            evidence.get(
-                                "confidence"
-                            )
-                        ),
-
                         "confidence_label": (
                             evidence.get(
                                 "confidence_label"
                             )
                         ),
-
                         "signals": [],
-
                         "signal_labels": [],
-
                         "is_near_white": False,
-
+                        "is_low_contrast": False,
+                        "is_extreme_low_contrast": False,
                         "is_small_text": True,
-
                         "is_relative_small_text": False,
-
                         "is_instruction_like": False,
-
                         "coordinates_label": (
                             evidence.get(
                                 "coordinates_label"
                             )
                         ),
+                        "located": False,
+                        "location_message": None,
+                        "source_image_url": None,
+                        "annotated_image_url": None,
                     }
                 )
 
@@ -1298,7 +1481,43 @@ class BatchExportViewBuilder:
                 or []
             )
 
+            locatable_findings = [
+                *(
+                    analysis.get(
+                        "visual_concealment_white_text_findings",
+                        [],
+                    )
+                    or []
+                ),
+                *(
+                    analysis.get(
+                        "visual_concealment_low_contrast_text_findings",
+                        [],
+                    )
+                    or []
+                ),
+            ]
+
+            concealment_findings_by_index = {
+                index: finding
+                for index, finding in enumerate(
+                    locatable_findings,
+                    start=1,
+                )
+            }
+
             for location in concealment_locations:
+                finding_index = location.get(
+                    "finding_index"
+                )
+
+                finding = (
+                    concealment_findings_by_index.get(
+                        finding_index
+                    )
+                    or {}
+                )
+
                 result.append(
                     self._build_location_row(
                         analysis_id=analysis_id,
@@ -1310,9 +1529,7 @@ class BatchExportViewBuilder:
                             "Ocultação visual"
                         ),
                         reference_index=(
-                            location.get(
-                                "finding_index"
-                            )
+                            finding_index
                         ),
                         reference_code=(
                             location.get(
@@ -1325,6 +1542,7 @@ class BatchExportViewBuilder:
                             )
                         ),
                         location=location,
+                        technical_context=finding,
                     )
                 )
 
@@ -1623,133 +1841,115 @@ class BatchExportViewBuilder:
         reference_code: Any,
         detector: Any,
         location: dict[str, Any],
+        technical_context: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        context = (
+            technical_context
+            or {}
+        )
+
         return {
-            "analysis_id": (
-                analysis_id
-            ),
-
-            "filename": (
-                filename
-            ),
-
-            "location_type": (
-                location_type
-            ),
-
+            "analysis_id": analysis_id,
+            "filename": filename,
+            "location_type": location_type,
             "location_type_label": (
                 location_type_label
             ),
-
-            "reference_index": (
-                reference_index
+            "reference_index": reference_index,
+            "reference_code": reference_code,
+            "detector": detector,
+            "page_number": location.get(
+                "page_number"
             ),
-
-            "reference_code": (
-                reference_code
+            "matched_content": location.get(
+                "matched_content"
             ),
-
-            "detector": (
-                detector
+            "left": location.get(
+                "left"
             ),
-
-            "page_number": (
+            "top": location.get(
+                "top"
+            ),
+            "width": location.get(
+                "width"
+            ),
+            "height": location.get(
+                "height"
+            ),
+            "confidence": location.get(
+                "confidence"
+            ),
+            "confidence_label": location.get(
+                "confidence_label"
+            ),
+            "font_name": location.get(
+                "font_name"
+            ),
+            "font_size": location.get(
+                "font_size"
+            ),
+            "font_color_hex": location.get(
+                "font_color_hex"
+            ),
+            "background_color_hex": context.get(
+                "background_color_hex"
+            ),
+            "contrast_ratio": context.get(
+                "contrast_ratio"
+            ),
+            "contrast_threshold": context.get(
+                "contrast_threshold"
+            ),
+            "contrast_level": context.get(
+                "contrast_level"
+            ),
+            "contrast_level_label": context.get(
+                "contrast_level_label"
+            ),
+            "background_dominance_ratio": (
+                context.get(
+                    "background_dominance_ratio"
+                )
+            ),
+            "background_sampling_method": (
+                context.get(
+                    "background_sampling_method"
+                )
+            ),
+            "background_sampling_method_label": (
+                context.get(
+                    "background_sampling_method_label"
+                )
+            ),
+            "is_low_contrast": bool(
+                context.get(
+                    "is_low_contrast",
+                    False,
+                )
+            ),
+            "is_extreme_low_contrast": bool(
+                context.get(
+                    "is_extreme_low_contrast",
+                    False,
+                )
+            ),
+            "coordinates_label": location.get(
+                "coordinates_label"
+            ),
+            "located": bool(
                 location.get(
-                    "page_number"
+                    "located",
+                    False,
                 )
             ),
-
-            "matched_content": (
-                location.get(
-                    "matched_content"
-                )
+            "message": location.get(
+                "message"
             ),
-
-            "left": (
-                location.get(
-                    "left"
-                )
+            "source_image_url": location.get(
+                "source_image_url"
             ),
-
-            "top": (
-                location.get(
-                    "top"
-                )
-            ),
-
-            "width": (
-                location.get(
-                    "width"
-                )
-            ),
-
-            "height": (
-                location.get(
-                    "height"
-                )
-            ),
-
-            "confidence": (
-                location.get(
-                    "confidence"
-                )
-            ),
-
-            "confidence_label": (
-                location.get(
-                    "confidence_label"
-                )
-            ),
-
-            "font_name": (
-                location.get(
-                    "font_name"
-                )
-            ),
-
-            "font_size": (
-                location.get(
-                    "font_size"
-                )
-            ),
-
-            "font_color_hex": (
-                location.get(
-                    "font_color_hex"
-                )
-            ),
-
-            "coordinates_label": (
-                location.get(
-                    "coordinates_label"
-                )
-            ),
-
-            "located": (
-                bool(
-                    location.get(
-                        "located",
-                        False,
-                    )
-                )
-            ),
-
-            "message": (
-                location.get(
-                    "message"
-                )
-            ),
-
-            "source_image_url": (
-                location.get(
-                    "source_image_url"
-                )
-            ),
-
-            "annotated_image_url": (
-                location.get(
-                    "annotated_image_url"
-                )
+            "annotated_image_url": location.get(
+                "annotated_image_url"
             ),
         }
 
