@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from uuid import UUID
 
@@ -12,6 +12,7 @@ from app.domain.document.models.document import (
     Document as NormalizedDocument,
 )
 from app.domain.fingerprints.image_fingerprint import ImageFingerprint
+from app.domain.fingerprints.qrcode_fingerprint import QRCodeFingerprint
 from app.domain.models.barcode import Barcode
 from app.domain.models.document_image import DocumentImage
 from app.domain.models.document_ocr import DocumentOcr
@@ -51,3 +52,7 @@ class AnalysisContext:
     normalized_document: NormalizedDocument
     visual_concealment_analysis: VisualConcealmentAnalysis
     visual_concealment_locations: list[VisualConcealmentLocation]
+
+    qrcode_fingerprints: list[QRCodeFingerprint] = field(
+        default_factory=list,
+    )

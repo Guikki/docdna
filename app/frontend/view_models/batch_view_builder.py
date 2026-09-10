@@ -5,6 +5,10 @@ from app.domain.models.batch import Batch
 from app.domain.models.batch_finding_summary import (
     BatchFindingSummary,
 )
+from app.domain.models.cross_validation_finding import (
+    CrossValidationFinding,
+    CrossValidationSeverity,
+)
 from app.frontend.investigations.models.investigation_status import (
     InvestigationStatus,
 )
@@ -30,6 +34,9 @@ class BatchViewBuilder:
             str,
             InvestigationStatus,
         ] | None = None,
+        comparative_findings: list[
+            CrossValidationFinding
+        ] | None = None,
     ) -> dict[str, Any]:
         normalized_finding_summaries = (
             finding_summaries or []
@@ -40,10 +47,29 @@ class BatchViewBuilder:
             or {}
         )
 
+        normalized_comparative_findings = (
+            comparative_findings
+            or []
+        )
+
+        document_comparative_contexts = (
+            self._build_comparative_contexts(
+                findings=(
+                    normalized_comparative_findings
+                ),
+                batch_id=str(
+                    batch.id
+                ),
+            )
+        )
+
         documents = self._build_documents(
             batch=batch,
             document_analytical_statuses=(
                 normalized_document_statuses
+            ),
+            document_comparative_contexts=(
+                document_comparative_contexts
             ),
         )
 
@@ -101,6 +127,18 @@ class BatchViewBuilder:
             ),
 
             "documents": documents,
+
+            "comparative_affected_documents": (
+                sum(
+                    bool(
+                        document[
+                            "has_comparative_findings"
+                        ]
+                    )
+                    for document
+                    in documents
+                )
+            ),
 
             "result": {
                 "total_documents": (
@@ -165,6 +203,10 @@ class BatchViewBuilder:
             str,
             InvestigationStatus,
         ],
+        document_comparative_contexts: dict[
+            str,
+            dict[str, Any],
+        ],
     ) -> list[dict[str, Any]]:
         documents: list[
             dict[str, Any]
@@ -183,6 +225,13 @@ class BatchViewBuilder:
                     statuses=(
                         document_analytical_statuses
                     ),
+                )
+            )
+
+            comparative_context = (
+                document_comparative_contexts.get(
+                    analysis_id or "",
+                    self._empty_comparative_context(),
                 )
             )
 
@@ -230,11 +279,196 @@ class BatchViewBuilder:
                             analytical_status
                         )
                     ),
+
+                    **comparative_context,
                 }
             )
 
         return self._sort_documents(
             documents
+        )
+
+    def _build_comparative_contexts(
+        self,
+        *,
+        findings: list[
+            CrossValidationFinding
+        ],
+        batch_id: str,
+    ) -> dict[
+        str,
+        dict[str, Any],
+    ]:
+        findings_by_document: dict[
+            str,
+            list[CrossValidationFinding],
+        ] = {}
+
+        for finding in findings:
+            for document_id in (
+                finding.document_ids
+            ):
+                normalized_document_id = (
+                    str(document_id).strip()
+                )
+
+                if not normalized_document_id:
+                    continue
+
+                findings_by_document.setdefault(
+                    normalized_document_id,
+                    [],
+                ).append(
+                    finding
+                )
+
+        return {
+            document_id: (
+                self._build_comparative_context(
+                    findings=(
+                        document_findings
+                    ),
+                    batch_id=batch_id,
+                )
+            )
+            for (
+                document_id,
+                document_findings,
+            )
+            in findings_by_document.items()
+        }
+
+    def _build_comparative_context(
+        self,
+        *,
+        findings: list[
+            CrossValidationFinding
+        ],
+        batch_id: str,
+    ) -> dict[str, Any]:
+        if not findings:
+            return (
+                self._empty_comparative_context()
+            )
+
+        highest_severity = min(
+            (
+                finding.severity
+                for finding in findings
+            ),
+            key=(
+                self._comparative_severity_priority
+            ),
+        )
+
+        finding_count = len(
+            findings
+        )
+
+        return {
+            "has_comparative_findings": True,
+
+            "comparative_finding_count": (
+                finding_count
+            ),
+
+            "comparative_finding_count_label": (
+                self._format_comparative_count(
+                    finding_count
+                )
+            ),
+
+            "comparative_highest_severity": (
+                highest_severity.value
+            ),
+
+            "comparative_highest_severity_label": (
+                self._translate_comparative_severity(
+                    highest_severity
+                )
+            ),
+
+            "comparative_url": (
+                f"/batches/{batch_id}/comparisons"
+            ),
+        }
+
+    def _empty_comparative_context(
+        self,
+    ) -> dict[str, Any]:
+        return {
+            "has_comparative_findings": False,
+
+            "comparative_finding_count": 0,
+
+            "comparative_finding_count_label": (
+                "Nenhum apontamento comparativo"
+            ),
+
+            "comparative_highest_severity": None,
+
+            "comparative_highest_severity_label": (
+                None
+            ),
+
+            "comparative_url": None,
+        }
+
+    def _comparative_severity_priority(
+        self,
+        severity: CrossValidationSeverity,
+    ) -> int:
+        priority = {
+            CrossValidationSeverity.CRITICAL: 0,
+            CrossValidationSeverity.HIGH: 1,
+            CrossValidationSeverity.MEDIUM: 2,
+            CrossValidationSeverity.LOW: 3,
+            CrossValidationSeverity.INFO: 4,
+        }
+
+        return priority.get(
+            severity,
+            5,
+        )
+
+    def _translate_comparative_severity(
+        self,
+        severity: CrossValidationSeverity,
+    ) -> str:
+        labels = {
+            CrossValidationSeverity.CRITICAL: (
+                "Crítico"
+            ),
+            CrossValidationSeverity.HIGH: (
+                "Alto"
+            ),
+            CrossValidationSeverity.MEDIUM: (
+                "Médio"
+            ),
+            CrossValidationSeverity.LOW: (
+                "Baixo"
+            ),
+            CrossValidationSeverity.INFO: (
+                "Informativo"
+            ),
+        }
+
+        return labels.get(
+            severity,
+            str(severity),
+        )
+
+    def _format_comparative_count(
+        self,
+        count: int,
+    ) -> str:
+        if count == 1:
+            return (
+                "1 apontamento comparativo"
+            )
+
+        return (
+            f"{count} apontamentos comparativos"
         )
 
     def _document_analytical_status(
@@ -364,6 +598,15 @@ class BatchViewBuilder:
             InvestigationStatus.NOT_EXECUTED.value: 3,
         }
 
+        comparative_priority = {
+            CrossValidationSeverity.CRITICAL.value: 0,
+            CrossValidationSeverity.HIGH.value: 1,
+            CrossValidationSeverity.MEDIUM.value: 2,
+            CrossValidationSeverity.LOW.value: 3,
+            CrossValidationSeverity.INFO.value: 4,
+            None: 5,
+        }
+
         return sorted(
             documents,
             key=lambda document: (
@@ -372,6 +615,12 @@ class BatchViewBuilder:
                         "analytical_status"
                     ],
                     4,
+                ),
+                comparative_priority.get(
+                    document[
+                        "comparative_highest_severity"
+                    ],
+                    6,
                 ),
                 document[
                     "original_filename"

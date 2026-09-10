@@ -799,6 +799,64 @@
     color: #475569;
 }
 
+
+/* Contexto comparativo do documento */
+
+.batch-document--has-comparative-findings {
+    box-shadow:
+        inset 0 0 0 1px rgba(109, 93, 252, 0.08);
+}
+
+.batch-document__comparative-context {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.comparative-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 25px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.comparative-badge--critical {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.comparative-badge--high {
+    background: #fff1f2;
+    color: #be123c;
+}
+
+.comparative-badge--medium {
+    background: #fffbeb;
+    color: #b45309;
+}
+
+.comparative-badge--low {
+    background: #f0f9ff;
+    color: #0369a1;
+}
+
+.comparative-badge--info {
+    background: #f3e8ff;
+    color: var(--color-purple);
+}
+
+.batch-document__comparative-count {
+    color: var(--color-muted);
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
 .batch-document__error {
     margin: 4px 0 0;
     color: var(--color-pink);
@@ -807,6 +865,11 @@
 }
 
 .batch-document__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
     flex-shrink: 0;
 }
 

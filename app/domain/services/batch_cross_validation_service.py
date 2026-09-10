@@ -15,6 +15,9 @@ from app.domain.comparators.duplicate_itf_different_numeric_line_comparator impo
 from app.domain.comparators.image_fingerprint_cross_comparator import (
     ImageFingerprintCrossComparator,
 )
+from app.domain.comparators.qrcode_fingerprint_cross_comparator import (
+    QRCodeFingerprintCrossComparator,
+)
 from app.domain.models.batch import Batch
 from app.domain.models.cross_validation_result import (
     CrossValidationResult,
@@ -37,6 +40,7 @@ class BatchCrossValidationService:
                 DuplicateItfComparator(),
                 DuplicateItfDifferentNumericLineComparator(),
                 ImageFingerprintCrossComparator(),
+                QRCodeFingerprintCrossComparator(),
             ]
         )
 

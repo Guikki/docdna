@@ -3,7 +3,7 @@
 {% block styles %}
 <link
     rel="stylesheet"
-    href="{{ url_for('static', path='/css/pages/batch_result.css') }}?v=20260825-1"
+    href="{{ url_for('static', path='/css/pages/batch_result.css') }}?v=20260908-1"
 >
 {% endblock %}
 
@@ -72,7 +72,7 @@
             "
         >
             <span class="batch-summary-card__label">
-                Situação analítica
+                Análise individual
             </span>
 
             <strong
@@ -81,7 +81,11 @@
                     analytical-status--{{ batch.analytical_status }}
                 "
             >
-                {{ batch.analytical_status_label }}
+                {% if batch.analytical_status == "clear" %}
+                    Sem achados individuais
+                {% else %}
+                    {{ batch.analytical_status_label }}
+                {% endif %}
             </strong>
         </article>
 
@@ -135,13 +139,16 @@
                     id="analytical-overview-title"
                     class="section-title"
                 >
-                    Situação analítica dos documentos
+                    Análise individual dos documentos
                 </h2>
 
                 <p class="analytical-overview__description">
-                    Esta classificação organiza os documentos conforme os
-                    apontamentos produzidos pelos verificadores executados.
-                    Ela não representa declaração de fraude ou autenticidade.
+                    Esta classificação considera apenas os achados produzidos
+                    na análise isolada de cada documento. Apontamentos obtidos
+                    pela comparação entre documentos são apresentados
+                    separadamente no diagnóstico comparativo do lote.
+                    Nenhuma classificação representa declaração de fraude
+                    ou autenticidade.
                 </p>
             </div>
 
@@ -151,7 +158,11 @@
                     analytical-overview__badge--{{ batch.analytical_status }}
                 "
             >
-                {{ batch.analytical_status_label }}
+                {% if batch.analytical_status == "clear" %}
+                    Sem achados individuais
+                {% else %}
+                    {{ batch.analytical_status_label }}
+                {% endif %}
             </span>
         </div>
 
@@ -189,7 +200,7 @@
 
             <article class="analytical-stat analytical-stat--clear">
                 <span>
-                    Sem apontamentos
+                    Sem achados individuais
                 </span>
 
                 <strong>
@@ -518,8 +529,14 @@
                 </div>
 
                 <div>
-                    <dt>Situação analítica</dt>
-                    <dd>{{ batch.analytical_status_label }}</dd>
+                    <dt>Análise individual</dt>
+                    <dd>
+                        {% if batch.analytical_status == "clear" %}
+                            Sem achados individuais
+                        {% else %}
+                            {{ batch.analytical_status_label }}
+                        {% endif %}
+                    </dd>
                 </div>
 
                 <div>
@@ -548,9 +565,11 @@
                     </h2>
 
                     <p class="batch-documents-section__description">
-                        Os documentos são exibidos por prioridade analítica:
-                        alta prioridade, revisão recomendada, sem apontamentos
-                        e análise incompleta.
+                        O primeiro marcador mostra o resultado da análise
+                        individual. Quando o documento participa de um padrão
+                        identificado apenas na comparação do lote, um segundo
+                        marcador informa a quantidade e a maior severidade
+                        comparativa encontrada.
                     </p>
                 </div>
             </div>
@@ -563,6 +582,10 @@
                             batch-document
                             batch-document--operational-{{ document.status }}
                             batch-document--analytical-{{ document.analytical_status }}
+                            {% if document.has_comparative_findings %}
+                                batch-document--has-comparative-findings
+                                batch-document--comparative-{{ document.comparative_highest_severity }}
+                            {% endif %}
                         "
                     >
                         <div class="batch-document__main">
@@ -591,7 +614,11 @@
                                             analytical-badge--{{ document.analytical_status }}
                                         "
                                     >
-                                        {{ document.analytical_status_label }}
+                                        {% if document.analytical_status == "clear" %}
+                                            Sem achados individuais
+                                        {% else %}
+                                            {{ document.analytical_status_label }}
+                                        {% endif %}
                                     </span>
 
                                 </div>
@@ -600,6 +627,23 @@
                                     Processamento:
                                     {{ document.status_label }}
                                 </span>
+
+                                {% if document.has_comparative_findings %}
+                                    <div class="batch-document__comparative-context">
+                                        <span
+                                            class="
+                                                comparative-badge
+                                                comparative-badge--{{ document.comparative_highest_severity }}
+                                            "
+                                        >
+                                            {{ document.comparative_highest_severity_label }}
+                                        </span>
+
+                                        <span class="batch-document__comparative-count">
+                                            {{ document.comparative_finding_count_label }}
+                                        </span>
+                                    </div>
+                                {% endif %}
 
                                 {% if document.error_message %}
                                     <p class="batch-document__error">
@@ -620,6 +664,17 @@
                                 >
                                     Abrir análise
                                 </a>
+
+                                {% if document.comparative_url %}
+                                    <a
+                                        class="btn btn-secondary btn-comparative"
+                                        href="{{ document.comparative_url }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        Ver comparações
+                                    </a>
+                                {% endif %}
                             {% else %}
                                 <span class="batch-document__unavailable">
                                     Resultado indisponível

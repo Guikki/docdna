@@ -473,6 +473,16 @@ def batch_result(
         )
     )
 
+    (
+        cross_validation_result,
+        evidence_report,
+    ) = (
+        batch_cross_validation_service
+        .execute_with_report(
+            batch
+        )
+    )
+
     batch_view = (
         batch_view_builder.build(
             batch=batch,
@@ -484,13 +494,11 @@ def batch_result(
             document_analytical_statuses=(
                 document_analytical_statuses
             ),
-        )
-    )
 
-    evidence_report = (
-        batch_cross_validation_service
-        .build_evidence_report(
-            batch
+            comparative_findings=(
+                cross_validation_result
+                .findings
+            ),
         )
     )
 

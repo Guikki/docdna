@@ -238,6 +238,11 @@ class UploadDocumentUseCase:
                 .image_fingerprints
             ),
 
+            "qrcode_fingerprints": (
+                analysis_context
+                .qrcode_fingerprints
+            ),
+
             "normalized_document": (
                 analysis_context
                 .normalized_document

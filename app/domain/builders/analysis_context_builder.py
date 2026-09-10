@@ -26,6 +26,9 @@ from app.domain.services.numeric_line_visual_evidence_builder import (
 from app.processors.image_fingerprint_processor import (
     ImageFingerprintProcessor,
 )
+from app.processors.qrcode_fingerprint_processor import (
+    QRCodeFingerprintProcessor,
+)
 
 
 class AnalysisContextBuilder:
@@ -113,6 +116,13 @@ class AnalysisContextBuilder:
             )
         )
 
+        qrcode_fingerprints = (
+            QRCodeFingerprintProcessor()
+            .process(
+                barcodes
+            )
+        )
+
         printed_numeric_lines = (
             PrintedNumericLineReader()
             .read(
@@ -190,6 +200,9 @@ class AnalysisContextBuilder:
             images=images,
             image_fingerprints=(
                 image_fingerprints
+            ),
+            qrcode_fingerprints=(
+                qrcode_fingerprints
             ),
             barcodes=(
                 barcodes
