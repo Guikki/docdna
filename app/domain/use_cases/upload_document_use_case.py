@@ -21,6 +21,9 @@ from app.domain.prompt_injection.services.prompt_injection_visual_evidence_build
     PromptInjectionVisualEvidenceBuilder,
 )
 from app.domain.shared.enums import DocumentStatus
+from app.observability.performance_timer import (
+    PerformanceTimer,
+)
 from app.utils.hash_utils import calculate_sha256
 
 
@@ -29,18 +32,26 @@ class UploadDocumentUseCase:
         self,
         file: UploadFile,
     ) -> dict:
-        self._validate_pdf(
-            file
-        )
+        timer = PerformanceTimer()
+
+        with timer.measure(
+            "validate_pdf"
+        ):
+            self._validate_pdf(
+                file
+            )
 
         upload_dir = (
             settings.UPLOADS_DIR
         )
 
-        upload_dir.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
+        with timer.measure(
+            "prepare_upload_directory"
+        ):
+            upload_dir.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
 
         document_id = uuid4()
 
@@ -55,11 +66,21 @@ class UploadDocumentUseCase:
             / stored_filename
         )
 
-        with saved_path.open(
-            "wb"
-        ) as buffer:
-            buffer.write(
-                file.file.read()
+        with timer.measure(
+            "save_file"
+        ):
+            with saved_path.open(
+                "wb"
+            ) as buffer:
+                buffer.write(
+                    file.file.read()
+                )
+
+        with timer.measure(
+            "sha256"
+        ):
+            sha256 = calculate_sha256(
+                saved_path
             )
 
         document = Document(
@@ -83,17 +104,19 @@ class UploadDocumentUseCase:
                 .stat()
                 .st_size
             ),
-            sha256=calculate_sha256(
-                saved_path
-            ),
+            sha256=sha256,
             uploaded_at=datetime.now(),
             status=(
                 DocumentStatus.RECEIVED
             ),
         )
 
-        analysis_context = (
+        analysis_context_builder = (
             AnalysisContextBuilder()
+        )
+
+        analysis_context = (
+            analysis_context_builder
             .build(
                 document
             )
@@ -115,66 +138,94 @@ class UploadDocumentUseCase:
             PromptInjectionVisualEvidenceBuilder()
         )
 
-        barcode_presence_evidences = (
-            barcode_presence_detector
-            .analyze(
-                analysis_context
-            )
-        )
-
-        barcode_line_comparisons = (
-            barcode_numeric_line_detector
-            .compare(
-                analysis_context
-            )
-        )
-
-        barcode_comparison_evidences = (
-            barcode_numeric_line_detector
-            .analyze(
-                analysis_context
-            )
-        )
-
-        prompt_injection_assessment = (
-            prompt_injection_service
-            .analyze(
-                native_text=(
+        with timer.measure(
+            "barcode_presence_detector"
+        ):
+            barcode_presence_evidences = (
+                barcode_presence_detector
+                .analyze(
                     analysis_context
-                    .native_text
-                ),
-                ocr=(
-                    analysis_context
-                    .ocr
-                ),
-                normalized_document=(
-                    analysis_context
-                    .normalized_document
-                ),
+                )
             )
-        )
 
-        prompt_injection_locations = (
-            self._build_prompt_injection_locations(
-                pdf_path=str(
-                    saved_path
-                ),
-                analysis_context=(
+        with timer.measure(
+            "barcode_numeric_line_compare"
+        ):
+            barcode_line_comparisons = (
+                barcode_numeric_line_detector
+                .compare(
                     analysis_context
-                ),
-                assessment=(
-                    prompt_injection_assessment
-                ),
-                visual_builder=(
-                    prompt_injection_visual_builder
-                ),
+                )
             )
-        )
+
+        with timer.measure(
+            "barcode_numeric_line_evidence"
+        ):
+            barcode_comparison_evidences = (
+                barcode_numeric_line_detector
+                .analyze(
+                    analysis_context
+                )
+            )
+
+        with timer.measure(
+            "prompt_injection_analysis"
+        ):
+            prompt_injection_assessment = (
+                prompt_injection_service
+                .analyze(
+                    native_text=(
+                        analysis_context
+                        .native_text
+                    ),
+                    ocr=(
+                        analysis_context
+                        .ocr
+                    ),
+                    normalized_document=(
+                        analysis_context
+                        .normalized_document
+                    ),
+                )
+            )
+
+        with timer.measure(
+            "prompt_injection_visual_evidence"
+        ):
+            prompt_injection_locations = (
+                self._build_prompt_injection_locations(
+                    pdf_path=str(
+                        saved_path
+                    ),
+                    analysis_context=(
+                        analysis_context
+                    ),
+                    assessment=(
+                        prompt_injection_assessment
+                    ),
+                    visual_builder=(
+                        prompt_injection_visual_builder
+                    ),
+                )
+            )
 
         evidences = [
             *barcode_presence_evidences,
             *barcode_comparison_evidences,
         ]
+
+        performance = self._merge_performance_reports(
+            primary_report=(
+                timer.to_dict()
+            ),
+            secondary_report=(
+                getattr(
+                    analysis_context_builder,
+                    "performance_report",
+                    None,
+                )
+            ),
+        )
 
         return {
             "id": (
@@ -293,11 +344,176 @@ class UploadDocumentUseCase:
                 evidences
             ),
 
+            "performance": (
+                performance
+            ),
+
             "message": (
                 "Documento recebido, "
                 "identificado e lido "
                 "com sucesso."
             ),
+        }
+
+    def _merge_performance_reports(
+        self,
+        *,
+        primary_report: dict,
+        secondary_report: dict | None,
+    ) -> dict:
+        total_seconds = float(
+            primary_report.get(
+                "total_seconds",
+                0.0,
+            )
+            or 0.0
+        )
+
+        merged_stages: dict = {
+            name: dict(stage)
+            for name, stage
+            in primary_report.get(
+                "stages",
+                {},
+            ).items()
+        }
+
+        if isinstance(
+            secondary_report,
+            dict,
+        ):
+            secondary_stages = (
+                secondary_report.get(
+                    "stages",
+                    {},
+                )
+            )
+
+            if isinstance(
+                secondary_stages,
+                dict,
+            ):
+                for (
+                    name,
+                    stage,
+                ) in secondary_stages.items():
+                    if not isinstance(
+                        stage,
+                        dict,
+                    ):
+                        continue
+
+                    duration_seconds = float(
+                        stage.get(
+                            "duration_seconds",
+                            0.0,
+                        )
+                        or 0.0
+                    )
+
+                    calls = int(
+                        stage.get(
+                            "calls",
+                            0,
+                        )
+                        or 0
+                    )
+
+                    existing = (
+                        merged_stages.get(
+                            name
+                        )
+                    )
+
+                    if isinstance(
+                        existing,
+                        dict,
+                    ):
+                        duration_seconds += float(
+                            existing.get(
+                                "duration_seconds",
+                                0.0,
+                            )
+                            or 0.0
+                        )
+
+                        calls += int(
+                            existing.get(
+                                "calls",
+                                0,
+                            )
+                            or 0
+                        )
+
+                    merged_stages[
+                        name
+                    ] = {
+                        "duration_seconds": (
+                            duration_seconds
+                        ),
+                        "calls": calls,
+                    }
+
+        normalized_stages = {}
+
+        for (
+            name,
+            stage,
+        ) in merged_stages.items():
+            duration_seconds = float(
+                stage.get(
+                    "duration_seconds",
+                    0.0,
+                )
+                or 0.0
+            )
+
+            calls = int(
+                stage.get(
+                    "calls",
+                    0,
+                )
+                or 0
+            )
+
+            average_seconds = (
+                duration_seconds / calls
+                if calls > 0
+                else 0.0
+            )
+
+            percentage_of_total = (
+                duration_seconds
+                / total_seconds
+                * 100.0
+                if total_seconds > 0
+                else 0.0
+            )
+
+            normalized_stages[
+                name
+            ] = {
+                "duration_seconds": round(
+                    duration_seconds,
+                    6,
+                ),
+                "calls": calls,
+                "average_seconds": round(
+                    average_seconds,
+                    6,
+                ),
+                "percentage_of_total": round(
+                    percentage_of_total,
+                    2,
+                ),
+            }
+
+        return {
+            "total_seconds": round(
+                total_seconds,
+                6,
+            ),
+            "stages": normalized_stages,
         }
 
     def _build_prompt_injection_locations(
