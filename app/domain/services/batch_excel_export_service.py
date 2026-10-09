@@ -1,4 +1,5 @@
 import json
+import re
 
 from typing import Any
 
@@ -52,6 +53,14 @@ class BatchExcelExportService:
     COMPARISONS_SHEET_NAME = "08 - Comparações"
     TECHNICAL_DATA_SHEET_NAME = "09 - Dados técnicos"
     IMAGES_SHEET_NAME = "10 - Imagens"
+    # Caracteres de controle que não podem ser gravados
+    # diretamente em células de arquivos XLSX/XML.
+    #
+    # TAB (\x09), LF (\x0A) e CR (\x0D) são permitidos
+    # e, portanto, não fazem parte desta expressão.
+    _EXCEL_ILLEGAL_CHARACTERS = re.compile(
+        r"[\x00-\x08\x0B\x0C\x0E-\x1F]"
+    )
 
     def __init__(self) -> None:
         self._analysis_repository = (
@@ -110,6 +119,18 @@ class BatchExcelExportService:
         export_view = (
             self._build_export_view(
                 batch
+            )
+        )
+
+        # A análise pode preservar caracteres de controle encontrados
+        # no documento original. Alguns deles são inválidos no XML
+        # utilizado internamente pelo formato XLSX.
+        #
+        # A sanitização acontece somente na representação destinada
+        # à exportação. Os dados analíticos originais não são alterados.
+        export_view = (
+            self._sanitize_excel_payload(
+                export_view
             )
         )
 
@@ -2627,6 +2648,84 @@ class BatchExcelExportService:
             max(ratio, 0.0),
             1.0,
         )
+
+    @classmethod
+    def _sanitize_excel_text(
+        cls,
+        value: str,
+    ) -> str:
+        """
+        Converte caracteres incompatíveis com XLSX em representação visível.
+
+        O conteúdo analítico original não é modificado. Esta transformação
+        existe somente na fronteira de exportação para Excel.
+
+        Em vez de remover silenciosamente um caractere de controle, ele é
+        representado como \\xNN para preservar sua existência no relatório.
+        """
+
+        if not isinstance(value, str):
+            raise TypeError(
+                "Excel text sanitizer value must be a string."
+            )
+
+        return cls._EXCEL_ILLEGAL_CHARACTERS.sub(
+            lambda match: (
+                f"\\x{ord(match.group(0)):02X}"
+            ),
+            value,
+        )
+
+    @classmethod
+    def _sanitize_excel_payload(
+        cls,
+        value: Any,
+    ) -> Any:
+        """
+        Sanitiza recursivamente a estrutura preparada para exportação.
+
+        Strings recebem tratamento específico para XLSX. Coleções mantêm
+        sua estrutura original e valores não textuais permanecem intactos.
+        """
+
+        if isinstance(value, str):
+            return cls._sanitize_excel_text(
+                value
+            )
+
+        if isinstance(value, dict):
+            return {
+                key: cls._sanitize_excel_payload(
+                    item
+                )
+                for key, item in value.items()
+            }
+
+        if isinstance(value, list):
+            return [
+                cls._sanitize_excel_payload(
+                    item
+                )
+                for item in value
+            ]
+
+        if isinstance(value, tuple):
+            return tuple(
+                cls._sanitize_excel_payload(
+                    item
+                )
+                for item in value
+            )
+
+        if isinstance(value, set):
+            return {
+                cls._sanitize_excel_payload(
+                    item
+                )
+                for item in value
+            }
+
+        return value
 
     def _format_json_value(
         self,
