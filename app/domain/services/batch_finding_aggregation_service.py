@@ -230,6 +230,14 @@ class BatchFindingAggregationService:
             or ()
         )
 
+        low_contrast_text_findings = (
+            self._read_value(
+                concealment_analysis,
+                "low_contrast_text_findings",
+            )
+            or ()
+        )
+
         tiny_text_evidences = (
             self._read_value(
                 concealment_analysis,
@@ -240,6 +248,7 @@ class BatchFindingAggregationService:
 
         findings = [
             *list(white_text_findings),
+            *list(low_contrast_text_findings),
             *list(tiny_text_evidences),
         ]
 

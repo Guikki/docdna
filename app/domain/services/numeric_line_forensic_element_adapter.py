@@ -226,6 +226,9 @@ class NumericLineForensicElementAdapter:
                 line.normalized_content
             ),
             metadata={
+                **({"contextual_kind": line.contextual_kind,
+                    "contextual_metadata": line.contextual_metadata}
+                   if getattr(line, "contextual_kind", "unclassified") != "unclassified" else {}),
                 "line_index": (
                     line.line_index
                 ),

@@ -15,6 +15,17 @@ class NumericLineValidator:
         content = line.normalized_content
         digit_count = len(content)
 
+        if getattr(line, "contextual_kind", None) == "concatenated_fields":
+            return NumericLineValidation(
+                line_index=line.line_index, normalized_content=content,
+                line_type=NumericLineType.UNKNOWN,
+                status=NumericLineValidationStatus.INCONCLUSIVE,
+                digit_count=digit_count, validation_method=None,
+                valid_check_digits=0, total_check_digits=0,
+                message="Campos identificadores concatenados por evidência posicional. "
+                        "Observação preservada; validação de linha de pagamento não aplicável.",
+            )
+
         if digit_count == 47:
             return self._validate_bank_slip(line)
 

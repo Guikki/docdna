@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from io import BytesIO
 from types import SimpleNamespace
 
@@ -11,6 +9,19 @@ from app.domain.use_cases.upload_document_use_case import (
 
 class _FakeAnalysisContextBuilder:
     context = None
+
+    def __init__(self) -> None:
+        self.performance_report = {
+            "total_seconds": 0.0,
+            "stages": {
+                "ocr": {
+                    "duration_seconds": 0.0,
+                    "calls": 1,
+                    "average_seconds": 0.0,
+                    "percentage_of_total": 0.0,
+                }
+            },
+        }
 
     def build(
         self,
@@ -48,6 +59,8 @@ class _FakePromptInjectionAnalysisService:
         native_text,
         ocr,
         normalized_document,
+        barcodes,
+        qr_structural_findings,
     ):
         return None
 
@@ -63,24 +76,17 @@ class _FakePromptInjectionVisualEvidenceBuilder:
         )
 
 
-def test_should_expose_qrcode_fingerprints_in_analysis_result(
+def _configure_fakes(
     monkeypatch,
     tmp_path,
 ) -> None:
-    qrcode_fingerprints = [
-        object(),
-        object(),
-    ]
-
     context = SimpleNamespace(
         pdf_info=object(),
         native_text=object(),
         ocr=object(),
         images=[],
         image_fingerprints=[],
-        qrcode_fingerprints=(
-            qrcode_fingerprints
-        ),
+        qrcode_fingerprints=[],
         normalized_document=object(),
         visual_concealment_analysis=object(),
         visual_concealment_locations=[],
@@ -91,9 +97,7 @@ def test_should_expose_qrcode_fingerprints_in_analysis_result(
         ocr_text_boxes=[],
     )
 
-    _FakeAnalysisContextBuilder.context = (
-        context
-    )
+    _FakeAnalysisContextBuilder.context = context
 
     monkeypatch.setattr(
         module,
@@ -133,6 +137,16 @@ def test_should_expose_qrcode_fingerprints_in_analysis_result(
         _FakePromptInjectionVisualEvidenceBuilder,
     )
 
+
+def test_execute_should_expose_performance_report(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    _configure_fakes(
+        monkeypatch,
+        tmp_path,
+    )
+
     upload = SimpleNamespace(
         filename="documento.pdf",
         content_type="application/pdf",
@@ -148,7 +162,81 @@ def test_should_expose_qrcode_fingerprints_in_analysis_result(
         )
     )
 
+    performance = result[
+        "performance"
+    ]
+
     assert (
-        result["qrcode_fingerprints"]
-        is qrcode_fingerprints
+        performance[
+            "total_seconds"
+        ]
+        >= 0.0
+    )
+
+    assert list(
+        performance[
+            "stages"
+        ].keys()
+    ) == [
+        "validate_pdf",
+        "prepare_upload_directory",
+        "save_file",
+        "sha256",
+        "barcode_presence_detector",
+        "barcode_numeric_line_compare",
+        "barcode_numeric_line_evidence",
+        "financial_reconciliation",
+        "qr_structural_inspection",
+        "qr_visual_concealment_correlation",
+        "prompt_injection_analysis",
+        "prompt_injection_visual_evidence",
+        "ocr",
+    ]
+
+
+def test_should_recalculate_merged_stage_percentage() -> None:
+    use_case = UploadDocumentUseCase()
+
+    merged = use_case._merge_performance_reports(
+        primary_report={
+            "total_seconds": 2.0,
+            "stages": {
+                "save_file": {
+                    "duration_seconds": 0.5,
+                    "calls": 1,
+                }
+            },
+        },
+        secondary_report={
+            "total_seconds": 1.0,
+            "stages": {
+                "ocr": {
+                    "duration_seconds": 1.0,
+                    "calls": 1,
+                    "percentage_of_total": 100.0,
+                }
+            },
+        },
+    )
+
+    assert (
+        merged[
+            "stages"
+        ][
+            "save_file"
+        ][
+            "percentage_of_total"
+        ]
+        == 25.0
+    )
+
+    assert (
+        merged[
+            "stages"
+        ][
+            "ocr"
+        ][
+            "percentage_of_total"
+        ]
+        == 50.0
     )

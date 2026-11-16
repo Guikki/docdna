@@ -17,6 +17,7 @@ from app.domain.readers.pdf_reader import PdfReader
 from app.domain.readers.printed_numeric_line_reader import (
     PrintedNumericLineReader,
 )
+from app.domain.services.document_identifier_service import DocumentIdentifierService
 from app.domain.rules.numeric_line_validator import (
     NumericLineValidator,
 )
@@ -173,6 +174,22 @@ class AnalysisContextBuilder:
         with timer.measure(
             "printed_numeric_line_reader"
         ):
+            identifier_service = DocumentIdentifierService()
+            document_identifiers = identifier_service.extract(
+                ocr_text_boxes=ocr_text_boxes, native_text=native_text, ocr=ocr,
+                normalized_document=normalized_document,
+            )
+            regions = identifier_service.propose_ocr_regions(ocr_text_boxes, document_identifiers)
+            if regions:
+                region_boxes = OcrReader(language="por").read_regions(source, regions)
+                recovered = identifier_service.extract(ocr_text_boxes=region_boxes)
+                for item in recovered:
+                    item.update(source="OCR_REGION", ocr_configuration={
+                        "render_scale": 4, "psm": 6,
+                        "regions": [r for r in regions if r["page_number"] == item["page_number"]],
+                    })
+                identifier_service.annotate_region_conflicts(recovered, ocr_text_boxes)
+                document_identifiers = identifier_service._deduplicate([*document_identifiers, *recovered])
             printed_numeric_lines = (
                 PrintedNumericLineReader()
                 .read(
@@ -180,6 +197,9 @@ class AnalysisContextBuilder:
                         native_text
                     ),
                     ocr=ocr,
+                    ocr_text_boxes=ocr_text_boxes,
+                    identifier_observations=document_identifiers,
+                    normalized_document=normalized_document,
                 )
             )
 
@@ -216,6 +236,7 @@ class AnalysisContextBuilder:
             )
 
         analysis_context = AnalysisContext(
+            document_identifiers=document_identifiers,
             document_id=(
                 document.id
             ),

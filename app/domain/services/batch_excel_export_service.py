@@ -1,5 +1,7 @@
 import json
 import re
+from hashlib import sha256
+from math import isfinite
 
 from typing import Any
 
@@ -13,6 +15,9 @@ from openpyxl.worksheet.table import (
 
 from app.config.settings import settings
 from app.domain.models.batch import Batch
+from app.domain.models.cross_validation_finding import (
+    CrossValidationFinding,
+)
 from app.domain.models.document_evidence import (
     DocumentEvidence,
     EvidenceSeverity,
@@ -26,6 +31,7 @@ from app.infrastructure.repositories.analysis_memory_repository import (
 from app.domain.services.batch_finding_aggregation_service import (
     BatchFindingAggregationService,
 )
+from app.domain.services.document_identifier_service import DocumentIdentifierService
 from app.frontend.exports.batch_export_view_builder import (
     BatchExportViewBuilder,
 )
@@ -43,10 +49,12 @@ from app.frontend.view_models.analysis_view_builder import (
 class BatchExcelExportService:
 
     SUMMARY_SHEET_NAME = "00 - Resumo"
+    TRIAGE_SHEET_NAME = "00 - Resumo"  # Triagem integrada ao resumo
     DOCUMENTS_SHEET_NAME = "01 - Documentos"
     FINDINGS_SHEET_NAME = "02 - Achados por tipo"
     EVIDENCES_SHEET_NAME = "03 - Evidências"
     FINANCIAL_SHEET_NAME = "04 - Financeiro"
+    FINANCIAL_RECONCILIATION_SHEET_NAME = "04 - Financeiro"  # Reconciliação integrada
     PROMPT_INJECTION_SHEET_NAME = "05 - Prompt Injection"
     CONCEALMENT_SHEET_NAME = "06 - Ocultação visual"
     LOCATIONS_SHEET_NAME = "07 - Localizações"
@@ -63,6 +71,7 @@ class BatchExcelExportService:
     )
 
     def __init__(self) -> None:
+        self._current_identifier_observations: list[dict[str, Any]] = []
         self._analysis_repository = (
             AnalysisMemoryRepository()
         )
@@ -116,9 +125,22 @@ class BatchExcelExportService:
             / filename
         )
 
+        # Os mesmos achados comparativos alimentam a visão documental
+        # e a aba de comparações. A validação cruzada roda uma única vez.
+        (
+            cross_validation_result,
+            evidence_report,
+        ) = self._cross_validation_service.execute_with_report(
+            batch
+        )
+
         export_view = (
             self._build_export_view(
-                batch
+                batch,
+                comparative_findings=cross_validation_result.findings,
+                identifier_comparisons=getattr(
+                    self._cross_validation_service, "identifier_comparisons", []
+                ),
             )
         )
 
@@ -133,6 +155,28 @@ class BatchExcelExportService:
                 export_view
             )
         )
+
+        # A reconciliação já foi produzida no processamento individual.
+        # A exportação apenas a consulta; NÃO executa detectores nem reabre PDFs.
+        financial_reconciliations = (
+            self._build_financial_reconciliation_records(batch)
+        )
+
+        # A triagem usa exclusivamente resultados já produzidos.
+        # Não cria novos diagnósticos e não altera a prioridade individual.
+        triage_records = self._sanitize_excel_payload(
+            self._build_triage_records(
+                batch=batch,
+                export_view=export_view,
+                comparative_evidences=evidence_report.evidences,
+                financial_reconciliations=financial_reconciliations,
+            )
+        )
+        triage_by_analysis_id = {
+            str(record["analysis_id"]): record
+            for record in triage_records
+            if record.get("analysis_id")
+        }
 
         workbook = Workbook()
 
@@ -177,6 +221,7 @@ class BatchExcelExportService:
                 worksheet=documents_sheet,
                 batch=batch,
                 export_view=export_view,
+                triage_by_analysis_id=triage_by_analysis_id,
             )
         )
 
@@ -187,6 +232,7 @@ class BatchExcelExportService:
             )
         )
 
+        self._current_identifier_observations = export_view.get("identifier_observations", [])
         exported_evidences = (
             self._build_evidences_sheet(
                 worksheet=evidences_sheet,
@@ -198,7 +244,16 @@ class BatchExcelExportService:
             self._build_financial_sheet(
                 worksheet=financial_sheet,
                 export_view=export_view,
+                batch=batch,
+                reconciliation_records=financial_reconciliations,
             )
+        )
+
+        # Mantém a métrica de reconciliação sem criar uma aba adicional.
+        # O resumo é uma linha; cada valor observado também é uma linha.
+        exported_financial_reconciliation = sum(
+            1 + len(entry.get("values", []))
+            for entry in financial_reconciliations
         )
 
         exported_prompt_injection = (
@@ -236,13 +291,6 @@ class BatchExcelExportService:
             )
         )
 
-        evidence_report = (
-            self._cross_validation_service
-            .build_evidence_report(
-                batch
-            )
-        )
-
         exported_comparisons = (
             self._build_comparisons_sheet(
                 worksheet=comparisons_sheet,
@@ -252,6 +300,7 @@ class BatchExcelExportService:
                 total_documents=(
                     batch.result.total_documents
                 ),
+                identifier_comparisons=export_view.get("identifier_comparisons", []),
             )
         )
 
@@ -262,6 +311,8 @@ class BatchExcelExportService:
             exported_findings=exported_findings,
             exported_evidences=exported_evidences,
             exported_financial=exported_financial,
+            exported_financial_reconciliation=exported_financial_reconciliation,
+            financial_reconciliations=financial_reconciliations,
             exported_prompt_injection=(
                 exported_prompt_injection
             ),
@@ -277,6 +328,14 @@ class BatchExcelExportService:
             highest_severity=(
                 evidence_report.highest_severity
             ),
+            triage_records=triage_records,
+        )
+
+        # Os motivos e os registros de triagem ficam acessíveis no resumo.
+        # A aba "01 - Documentos" também conserva a triagem por documento.
+        self._append_triage_to_summary(
+            worksheet=summary_sheet,
+            records=triage_records,
         )
 
         workbook.save(
@@ -297,6 +356,7 @@ class BatchExcelExportService:
             "exported_findings": exported_findings,
             "exported_evidences": exported_evidences,
             "exported_financial": exported_financial,
+            "exported_financial_reconciliation": exported_financial_reconciliation,
             "exported_prompt_injection": (
                 exported_prompt_injection
             ),
@@ -318,6 +378,8 @@ class BatchExcelExportService:
     def _build_export_view(
         self,
         batch: Batch,
+        comparative_findings: list[CrossValidationFinding] | None = None,
+        identifier_comparisons: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         analyses: list[dict[str, Any]] = []
         analysis_views: list[dict[str, Any]] = []
@@ -367,6 +429,16 @@ class BatchExcelExportService:
                 str(analysis_id)
             ] = analytical_status
 
+        identifier_observations = []
+        for analysis in analyses:
+            aid = str(analysis.get("id") or analysis.get("analysis_id") or "")
+            filename = str(analysis.get("original_filename") or analysis.get("filename") or "")
+            for observation in (analysis.get("document_identifiers") or []):
+                if isinstance(observation, dict):
+                    identifier_observations.append({
+                        **observation, "analysis_id": aid, "filename": filename,
+                    })
+
         finding_summaries = (
             self
             ._finding_aggregation_service
@@ -386,6 +458,9 @@ class BatchExcelExportService:
                     document_analytical_statuses
                 ),
                 analysis_views=analysis_views,
+                comparative_findings=comparative_findings,
+                identifier_observations=identifier_observations,
+                identifier_comparisons=identifier_comparisons,
             )
         )
 
@@ -404,6 +479,9 @@ class BatchExcelExportService:
         exported_technical_data: int,
         exported_images: int,
         highest_severity: EvidenceSeverity | None,
+        triage_records: list[dict[str, Any]] | None = None,
+        exported_financial_reconciliation: int = 0,
+        financial_reconciliations: list[dict[str, Any]] | None = None,
     ) -> None:
         summary = (
             export_view[
@@ -593,6 +671,61 @@ class BatchExcelExportService:
             ),
         ]
 
+        # Indicadores adicionais ficam após o resumo existente,
+        # preservando as linhas das versões anteriores.
+        triage_records = triage_records or []
+        financial_reconciliations = financial_reconciliations or []
+        rows.extend([
+            (
+                "Documentos com sinais que exigem conferência",
+                sum(
+                    item["triage_priority"] == 1
+                    for item in triage_records
+                ),
+            ),
+            (
+                "Documentos com ITF repetido no lote",
+                sum(
+                    "DUPLICATE_ITF" in item["comparative_codes"]
+                    for item in triage_records
+                ),
+            ),
+            (
+                "Documentos com divergência linha × código",
+                sum(
+                    item["mismatch_count"] > 0
+                    for item in triage_records
+                ),
+            ),
+            (
+                "Documentos com registros financeiros inconclusivos",
+                sum(
+                    item["inconclusive_count"] > 0
+                    for item in triage_records
+                ),
+            ),
+            (
+                "Critério de triagem",
+                "Sinais extraídos; não representa confirmação de fraude "
+                "nem altera a classificação individual.",
+            ),
+            (
+                "Documentos com reconciliação financeira disponível",
+                len(financial_reconciliations),
+            ),
+            (
+                "Diferenças ITF × Pix observadas (exigem vínculo)",
+                sum(
+                    item["status"] == "REVIEW_REQUIRED"
+                    for item in financial_reconciliations
+                ),
+            ),
+            (
+                "Registros de reconciliação exportados",
+                exported_financial_reconciliation,
+            ),
+        ])
+
         for row in rows:
             worksheet.append(
                 row
@@ -621,23 +754,417 @@ class BatchExcelExportService:
             ),
         )
 
+    def _build_triage_records(
+        self,
+        *,
+        batch: Batch,
+        export_view: dict[str, Any],
+        comparative_evidences: list[DocumentEvidence],
+        financial_reconciliations: list[dict[str, Any]] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Prepara uma triagem rastreável usando apenas achados existentes.
+
+        Não promove findings comparativos à classificação individual.
+        Candidatos numéricos inconclusivos permanecem inconclusivos.
+        """
+        relevant_codes = {
+            "DUPLICATE_ITF": "Código ITF repetido entre documentos",
+            "DUPLICATE_ITF_DIFFERENT_NUMERIC_LINE": (
+                "Mesmo ITF com candidatos numéricos diferentes; "
+                "confirmar se são linhas digitáveis"
+            ),
+            "QRCODE_EXACT_MATCH": (
+                "QR Code com mesmo conteúdo decodificado e mesmo hash de imagem"
+            ),
+            "QRCODE_REGENERATED": (
+                "Mesmo conteúdo QR com imagens diferentes; causa não determinada"
+            ),
+            "DOCUMENT_IDENTIFIER_EXACT_MATCH": (
+                "Mesmo identificador cadastral observado em outros documentos; "
+                "conferir titulares e vínculos contratuais"
+            ),
+            "DOCUMENT_IDENTIFIER_ONE_DIGIT": (
+                "Identificadores cadastrais semelhantes (um dígito); "
+                "sem conclusão de adulteração"
+            ),
+            "DOCUMENT_IDENTIFIER_TRANSPOSITION": (
+                "Identificadores cadastrais com transposição adjacente; "
+                "requer verificação visual"
+            ),
+        }
+        ids_to_analysis: dict[str, str] = {}
+        unique_names: dict[str, str | None] = {}
+        for document in batch.documents:
+            analysis_id = (
+                str(document.analysis_id)
+                if document.analysis_id is not None else ""
+            )
+            ids_to_analysis[str(document.document_id)] = analysis_id
+            if analysis_id:
+                ids_to_analysis[analysis_id] = analysis_id
+            name = document.original_filename
+            if name in unique_names:
+                unique_names[name] = None
+            else:
+                unique_names[name] = analysis_id
+
+        codes_by_analysis: dict[str, set[str]] = {}
+        for evidence in comparative_evidences:
+            code = str(evidence.code)
+            if code not in relevant_codes:
+                continue
+            metadata = dict(evidence.metadata or {})
+            participants: set[str] = set()
+
+            for identifier in evidence.document_ids:
+                match = ids_to_analysis.get(str(identifier))
+                if match:
+                    participants.add(match)
+
+            # Nomes duplicados são ambíguos e não são usados para vínculo.
+            for name in self._extract_comparison_document_names(metadata):
+                analysis_id = unique_names.get(name)
+                if analysis_id:
+                    participants.add(analysis_id)
+
+            for analysis_id in participants:
+                codes_by_analysis.setdefault(analysis_id, set()).add(code)
+
+        # Comparações observacionais, não adicionadas ao score individual.
+        identifier_matches_by_analysis: dict[str, list[dict[str, Any]]] = {}
+        for comparison in export_view.get("identifier_comparisons", []):
+            if not isinstance(comparison, dict):
+                continue
+            code = str(comparison.get("code") or "")
+            if code not in relevant_codes:
+                continue
+            for participant in comparison.get("participants", []) or []:
+                analysis_id = str(participant.get("analysis_id") or "")
+                if analysis_id and analysis_id in ids_to_analysis:
+                    identifier_matches_by_analysis.setdefault(analysis_id, []).append(comparison)
+                    codes_by_analysis.setdefault(analysis_id, set()).add(code)
+
+        reconciliations_by_id = {
+            item["analysis_id"]: item
+            for item in (financial_reconciliations or [])
+            if item.get("analysis_id")
+        }
+
+        financial_by_analysis: dict[str, dict[str, int]] = {}
+        for item in export_view.get("financial", []):
+            analysis_id = str(item.get("analysis_id") or "")
+            if not analysis_id:
+                continue
+            counters = financial_by_analysis.setdefault(
+                analysis_id,
+                {"invalid": 0, "mismatch": 0, "inconclusive": 0},
+            )
+            status = str(item.get("status") or "").lower().strip()
+            record_type = item.get("record_type")
+            if record_type == "validation" and status == "invalid":
+                counters["invalid"] += 1
+            elif record_type == "comparison" and status == "mismatch":
+                counters["mismatch"] += 1
+            elif status in ("inconclusive", "not_applicable"):
+                counters["inconclusive"] += 1
+
+        export_documents = {
+            str(item.get("analysis_id")): item
+            for item in export_view.get("documents", [])
+            if item.get("analysis_id")
+        }
+
+        result: list[dict[str, Any]] = []
+        for document in batch.documents:
+            analysis_id = str(document.analysis_id) if document.analysis_id else ""
+            exported = export_documents.get(analysis_id, {})
+            counts = financial_by_analysis.get(analysis_id, {})
+            invalid_count = counts.get("invalid", 0)
+            mismatch_count = counts.get("mismatch", 0)
+            inconclusive_count = counts.get("inconclusive", 0)
+            codes = sorted(codes_by_analysis.get(analysis_id, set()))
+            reasons = [relevant_codes[code] for code in codes]
+            contextual_count = sum(
+                str(f.get("analysis_id") or "") == analysis_id
+                for f in export_view.get("contextual_payment_line_findings", [])
+            )
+            if contextual_count:
+                reasons.append(
+                    f"{contextual_count} achado(s) contextual(is) de estrutura inválida "
+                    "em linha de pagamento (ver 03 - Evidências). Este achado "
+                    "não equivale ao status INVALID do validador estrito; "
+                    "a contagem de validações inválidas considera apenas esse status."
+                )
+            observed_kinds = {
+                item.get("kind") for item in export_view.get("identifier_observations", [])
+                if str(item.get("analysis_id") or "") == analysis_id and item.get("value")
+            }
+            if observed_kinds:
+                missing_labels = [
+                    label for kind, label in DocumentIdentifierService.LABELS.items()
+                    if kind not in observed_kinds
+                ]
+                if missing_labels:
+                    reasons.append(
+                        "Campos não identificados nesta extração: " + ", ".join(missing_labels)
+                        + ". Ausência de leitura não confirma ausência no documento."
+                    )
+            matching = identifier_matches_by_analysis.get(analysis_id, [])
+            if matching:
+                names = sorted({str(f.get("label") or "") for f in matching})
+                reasons.append(
+                    f"{len(matching)} coincidência(s) de campo(s) cadastrais: "
+                    f"{', '.join(names)} (ver 08 - Comparações; verificação humana pendente)"
+                )
+            reconciled = reconciliations_by_id.get(analysis_id, {})
+            reconciliation_status = reconciled.get("status")
+            if reconciliation_status == "REVIEW_REQUIRED":
+                reasons.append(
+                    "Diferença observada entre valores ITF e Pix na mesma "
+                    "página; vínculo entre os meios de pagamento e a mesma "
+                    "cobrança ainda não confirmado "
+                    f"(ver {self.FINANCIAL_RECONCILIATION_SHEET_NAME})"
+                )
+            elif reconciliation_status == "INCONCLUSIVE" and reconciled.get("issues"):
+                reasons.append(
+                    "Reconciliação financeira inconclusiva, com limitações "
+                    f"registradas (ver {self.FINANCIAL_RECONCILIATION_SHEET_NAME})"
+                )
+            if invalid_count:
+                reasons.append(
+                    f"{invalid_count} candidato(s) numérico(s) "
+                    "com validação estrutural inválida"
+                )
+            if mismatch_count:
+                reasons.append(
+                    f"{mismatch_count} comparação(ões) linha × código "
+                    "com divergência sinalizada"
+                )
+            if inconclusive_count:
+                reasons.append(
+                    f"{inconclusive_count} registro(s) financeiro(s) "
+                    "inconclusivo(s), sem confirmação de divergência"
+                )
+
+            if not analysis_id or not exported:
+                priority = 4
+                label = "Sem resultado individual disponível"
+            elif mismatch_count or invalid_count or contextual_count or (
+                "DUPLICATE_ITF_DIFFERENT_NUMERIC_LINE" in codes
+            ):
+                priority = 1
+                label = "Revisar inconsistências sinalizadas"
+            elif reconciliation_status == "REVIEW_REQUIRED":
+                priority = 2
+                label = "Conferir diferença entre valores codificados"
+            elif codes:
+                priority = 2
+                label = "Conferir comparação entre documentos"
+            elif inconclusive_count:
+                priority = 3
+                label = "Conferir extração / dados inconclusivos"
+            else:
+                priority = 5
+                label = "Sem sinal específico nesta triagem"
+
+            result.append({
+                "filename": document.original_filename,
+                "analysis_id": analysis_id,
+                "analytical_status_label": exported.get(
+                    "analytical_status_label", "Análise incompleta"
+                ),
+                "comparative_count": (
+                    (exported.get("comparative_finding_count", 0) or 0)
+                    + len(identifier_matches_by_analysis.get(analysis_id, []))
+                ),
+                "comparative_severity": (
+                    exported.get("comparative_highest_severity_label")
+                    or ("Informativo (identificadores)"
+                        if identifier_matches_by_analysis.get(analysis_id) else None)
+                ),
+                "comparative_codes": codes,
+                "invalid_count": invalid_count,
+                "contextual_invalid_count": contextual_count,
+                "mismatch_count": mismatch_count,
+                "inconclusive_count": inconclusive_count,
+                "triage_priority": priority,
+                "triage_label": label,
+                "reasons": "\n".join(reasons),
+            })
+
+        # A ordem destaca inconsistências sem modificar prioridades formais.
+        return sorted(result, key=lambda item: (
+            item["triage_priority"], item["filename"]
+        ))
+
+    def _append_triage_to_summary(
+        self,
+        *,
+        worksheet,
+        records: list[dict[str, Any]],
+    ) -> None:
+        """Insere a triagem no 00 - Resumo, mantendo status individual intacto."""
+        worksheet.append([])
+        title_row = worksheet.max_row + 1
+        worksheet.append(["TRIAGEM TÉCNICA POR DOCUMENTO — não altera status individual"])
+        worksheet.merge_cells(
+            start_row=title_row, start_column=1,
+            end_row=title_row, end_column=12,
+        )
+        title_cell = worksheet.cell(row=title_row, column=1)
+        title_cell.fill = PatternFill(fill_type="solid", fgColor="24184F")
+        title_cell.font = Font(color="FFFFFF", bold=True)
+        title_cell.alignment = Alignment(vertical="center")
+        worksheet.row_dimensions[title_row].height = 24
+
+        worksheet.append([
+            "Documento", "Situação individual", "Triagem técnica",
+            "Motivos para revisão / limitações", "Códigos comparativos",
+            "Total de comparações", "Severidade comparativa",
+            "Validações inválidas", "Divergências linha × código",
+            "Registros inconclusivos", "Ver comparações", "ID da análise",
+        ])
+        header_row = worksheet.max_row
+        for cell in worksheet[header_row]:
+            cell.fill = PatternFill(fill_type="solid", fgColor="29366B")
+            cell.font = Font(color="FFFFFF", bold=True)
+            cell.alignment = Alignment(vertical="center", wrap_text=True)
+        worksheet.row_dimensions[header_row].height = 32
+
+        for item in records:
+            worksheet.append([
+                item["filename"],
+                item["analytical_status_label"],
+                item["triage_label"],
+                item["reasons"],
+                self._join_values(item["comparative_codes"]),
+                item["comparative_count"],
+                item["comparative_severity"],
+                item["invalid_count"],
+                item["mismatch_count"],
+                item["inconclusive_count"],
+                self.COMPARISONS_SHEET_NAME if item["comparative_count"] else None,
+                item["analysis_id"],
+            ])
+        self._set_column_widths(
+            worksheet, [42, 52, 38, 70, 42, 22, 25, 22, 24, 22, 22, 38],
+        )
+        if records:
+            table = Table(
+                displayName="DocDNA_TriagemResumo",
+                ref=f"A{header_row}:L{worksheet.max_row}",
+            )
+            table.tableStyleInfo = TableStyleInfo(
+                name="TableStyleMedium2", showFirstColumn=False,
+                showLastColumn=False, showRowStripes=True,
+                showColumnStripes=False,
+            )
+            worksheet.add_table(table)
+
+    def _build_triage_sheet(
+        self,
+        *,
+        worksheet,
+        records: list[dict[str, Any]],
+    ) -> None:
+        """Exibe um índice revisável dos sinais já existentes no lote."""
+        headers = [
+            "Documento",
+            "Situação individual",
+            "Triagem técnica (não altera status)",
+            "Motivos para revisão / limitações",
+            "Códigos comparativos relevantes",
+            "Total de findings comparativos",
+            "Maior severidade comparativa",
+            "Validações numéricas inválidas",
+            "Divergências linha × código",
+            "Registros financeiros inconclusivos",
+            "Referência às comparações",
+            "ID da análise",
+        ]
+        worksheet.append(headers)
+        for item in records:
+            worksheet.append([
+                item["filename"],
+                item["analytical_status_label"],
+                item["triage_label"],
+                item["reasons"],
+                self._join_values(item["comparative_codes"]),
+                item["comparative_count"],
+                item["comparative_severity"],
+                item["invalid_count"],
+                item["mismatch_count"],
+                item["inconclusive_count"],
+                self.COMPARISONS_SHEET_NAME if item["comparative_count"] else None,
+                item["analysis_id"],
+            ])
+        self._style_worksheet(
+            worksheet=worksheet,
+            freeze_panes="D2",
+            auto_filter=False,
+        )
+        self._set_column_widths(
+            worksheet,
+            [38, 22, 39, 72, 42, 22, 24, 23, 23, 23, 24, 38],
+        )
+        # A cor é auxílio visual de triagem, não severidade forense.
+        triage_colors = {
+            1: ("FCE8EC", "9F1239"),
+            2: ("FFF4D6", "92400E"),
+            3: ("EAF1FC", "1D4ED8"),
+            4: ("EEF2F6", "475569"),
+        }
+        for row_index, item in enumerate(records, start=2):
+            colors = triage_colors.get(item["triage_priority"])
+            if not colors:
+                continue
+            status_cell = worksheet.cell(row=row_index, column=3)
+            status_cell.fill = PatternFill(
+                fill_type="solid", fgColor=colors[0]
+            )
+            status_cell.font = Font(
+                color=colors[1], bold=True
+            )
+        self._add_excel_table(
+            worksheet=worksheet,
+            table_name="DocDNA_Triagem",
+        )
+
     def _build_documents_sheet(
         self,
         worksheet,
         batch: Batch,
         export_view: dict[str, Any],
+        triage_by_analysis_id: dict[str, dict[str, Any]] | None = None,
     ) -> int:
+        triage_by_analysis_id = triage_by_analysis_id or {}
         documents_by_analysis_id = {
             str(document["analysis_id"]): document
             for document in export_view["documents"]
             if document["analysis_id"]
         }
+        # Inclui os vínculos observacionais na navegação do Excel,
+        # mas nunca altera a classificação individual (CLEAR/ATTENTION/ALERT).
+        identifier_matches_by_id: dict[str, list[dict[str, Any]]] = {}
+        for item in export_view.get("identifier_comparisons", []):
+            if not isinstance(item, dict):
+                continue
+            for participant in item.get("participants", []) or []:
+                if not isinstance(participant, dict):
+                    continue
+                aid = str(participant.get("analysis_id") or "")
+                if aid:
+                    identifier_matches_by_id.setdefault(aid, []).append(item)
 
         headers = [
             "Documento",
             "Status no lote",
             "Situação analítica",
             "Código analítico",
+            "Possui apontamentos comparativos",
+            "Quantidade de apontamentos comparativos",
+            "Maior severidade comparativa",
+            "Referência comparativa",
             "ID da análise",
             "Tamanho em bytes",
             "SHA-256",
@@ -658,11 +1185,29 @@ class BatchExcelExportService:
             "Total de evidências",
             "Status da localização visual",
             "Erro de processamento",
+            "Triagem técnica (não altera status individual)",
+            "Motivos para revisão / limitações",
+            "Códigos comparativos relevantes",
+            "Validações numéricas inválidas",
+            "Divergências linha × código",
+            "Registros financeiros inconclusivos",
+            "Conta identificada", "Cliente identificado", "Fatura identificada",
+            "Débito automático identificado", "Titular informado",
         ]
 
         worksheet.append(headers)
 
         exported_documents = 0
+        identifier_by_id: dict[str, dict[str, list[str]]] = {}
+        for item in export_view.get("identifier_observations", []):
+            if not isinstance(item, dict):
+                continue
+            aid = str(item.get("analysis_id") or "")
+            kind = str(item.get("kind") or "")
+            if aid and kind:
+                identifier_by_id.setdefault(aid, {}).setdefault(kind, []).append(
+                    str(item.get("value") or "")
+                )
 
         for batch_document in batch.documents:
             analysis_id_key = (
@@ -687,6 +1232,59 @@ class BatchExcelExportService:
                 else "Análise incompleta"
             )
 
+            # A situação individual continua independente dos achados de lote.
+            has_comparative_findings = bool(
+                exported_document.get("has_comparative_findings", False)
+                if exported_document
+                else False
+            )
+            comparative_finding_count = (
+                exported_document.get("comparative_finding_count", 0) or 0
+                if exported_document
+                else 0
+            )
+            comparative_highest_severity_label = (
+                exported_document.get("comparative_highest_severity_label")
+                if exported_document
+                else None
+            )
+            observed_matches = identifier_matches_by_id.get(analysis_id_key, [])
+            if observed_matches:
+                has_comparative_findings = True
+                comparative_finding_count += len(observed_matches)
+                if not comparative_highest_severity_label:
+                    comparative_highest_severity_label = (
+                        "Revisão recomendada (observacional)"
+                        if any(i.get("severity") == "Revisão recomendada"
+                               for i in observed_matches)
+                        else "Informativo (observacional)"
+                    )
+
+            comparative_columns = [
+                "Sim" if has_comparative_findings else "Não",
+                comparative_finding_count,
+                (
+                    comparative_highest_severity_label or "Não informada"
+                    if has_comparative_findings
+                    else None
+                ),
+                (
+                    self.COMPARISONS_SHEET_NAME
+                    if has_comparative_findings
+                    else None
+                ),
+            ]
+
+            triage = triage_by_analysis_id.get(analysis_id_key, {})
+            triage_columns = [
+                triage.get("triage_label", "Não avaliada nesta triagem"),
+                triage.get("reasons", ""),
+                self._join_values(triage.get("comparative_codes", [])),
+                triage.get("invalid_count", 0),
+                triage.get("mismatch_count", 0),
+                triage.get("inconclusive_count", 0),
+            ]
+
             analysis = self._get_analysis(
                 batch_document.analysis_id
             )
@@ -700,6 +1298,7 @@ class BatchExcelExportService:
                         ),
                         analytical_status_label,
                         analytical_status,
+                        *comparative_columns,
                         self._optional_uuid(
                             batch_document.analysis_id
                         ),
@@ -722,6 +1321,8 @@ class BatchExcelExportService:
                         0,
                         None,
                         batch_document.error_message,
+                        *triage_columns,
+                        None, None, None, None, None,
                     ]
                 )
                 continue
@@ -772,6 +1373,7 @@ class BatchExcelExportService:
                     ),
                     analytical_status_label,
                     analytical_status,
+                    *comparative_columns,
                     self._optional_uuid(
                         batch_document.analysis_id
                     ),
@@ -830,6 +1432,14 @@ class BatchExcelExportService:
                         numeric_line_locations
                     ),
                     batch_document.error_message,
+                    *triage_columns,
+                    *[
+                        self._safe_financial_excel_text(" | ".join(dict.fromkeys(
+                            identifier_by_id.get(analysis_id_key, {}).get(kind, [])
+                        )))
+                        for kind in ("account", "customer", "invoice",
+                                     "automatic_debit", "holder")
+                    ],
                 ]
             )
 
@@ -844,6 +1454,8 @@ class BatchExcelExportService:
         self._set_documents_column_widths(
             worksheet
         )
+        for index in range(len(headers) - 4, len(headers) + 1):
+            worksheet.column_dimensions[get_column_letter(index)].width = 32
 
         self._style_document_statuses(
             worksheet
@@ -979,200 +1591,434 @@ class BatchExcelExportService:
         worksheet,
         batch: Batch,
     ) -> int:
+        """Exporta achados persistidos e leituras técnicas sem confundi-los.
+
+        Uma leitura de código é uma OBSERVAÇÃO, não evidência de fraude.
+        O retorno contabiliza somente as evidências originais do detector.
+        """
         headers = [
-            "Documento",
-            "ID da análise",
-            "Código da evidência",
-            "Título",
-            "Descrição",
-            "Severidade",
-            "Detector",
-            "Confiança",
+            "Documento", "ID da análise", "Código da evidência",
+            "Título", "Descrição", "Severidade", "Detector", "Confiança",
+            "Natureza do registro", "Simbologia", "Conteúdo decodificado",
+            "Comprimento", "Página", "Condição técnica",
         ]
-
         worksheet.append(headers)
-
         exported_evidences = 0
+        barcode_observations = 0
 
         for batch_document in batch.documents:
-            analysis = self._get_analysis(
-                batch_document.analysis_id
-            )
-
-            if analysis is None:
+            analysis = self._get_analysis(batch_document.analysis_id)
+            if not isinstance(analysis, dict):
                 continue
 
-            evidences = analysis.get(
-                "evidences",
-                [],
-            )
-
-            for evidence in evidences:
+            filename = batch_document.original_filename
+            analysis_id = self._optional_uuid(batch_document.analysis_id)
+            for evidence in analysis.get("evidences", []) or []:
                 severity = self._enum_value(
-                    self._safe_attribute(
-                        evidence,
-                        "severity",
-                    )
+                    self._safe_attribute(evidence, "severity")
                 )
-
-                confidence = self._safe_attribute(
-                    evidence,
-                    "confidence",
-                )
-
-                worksheet.append(
-                    [
-                        batch_document.original_filename,
-                        self._optional_uuid(
-                            batch_document.analysis_id
-                        ),
-                        self._safe_attribute(
-                            evidence,
-                            "code",
-                        ),
-                        self._safe_attribute(
-                            evidence,
-                            "title",
-                        ),
-                        self._safe_attribute(
-                            evidence,
-                            "description",
-                        ),
-                        self._translate_severity_value(
-                            severity
-                        ),
-                        (
-                            self._safe_attribute(
-                                evidence,
-                                "detector",
-                            )
-                            or self._safe_attribute(
-                                evidence,
-                                "source",
-                            )
-                        ),
-                        self._format_confidence(
-                            confidence
-                        ),
-                    ]
-                )
-
+                confidence = self._safe_attribute(evidence, "confidence")
+                worksheet.append([
+                    filename,
+                    analysis_id,
+                    self._safe_attribute(evidence, "code"),
+                    self._safe_attribute(evidence, "title"),
+                    self._safe_attribute(evidence, "description"),
+                    self._translate_severity_value(severity),
+                    (
+                        self._safe_attribute(evidence, "detector")
+                        or self._safe_attribute(evidence, "source")
+                    ),
+                    self._format_confidence(confidence),
+                    "Achado original do detector",
+                    None, None, None, None, None,
+                ])
                 exported_evidences += 1
 
-        if exported_evidences == 0:
-            worksheet.append(
-                [
-                    "Nenhuma evidência genérica foi identificada.",
-                ]
-                + [None] * (len(headers) - 1)
-            )
+            for barcode in analysis.get("barcodes", []) or []:
+                content = str(self._safe_attribute(barcode, "content") or "")
+                if not content:
+                    continue
+                format_name = str(self._safe_attribute(barcode, "format") or "Não informado")
+                page = self._safe_attribute(barcode, "page_number")
+                condition = self._barcode_reading_condition(format_name, content)
+                worksheet.append([
+                    filename,
+                    analysis_id,
+                    "BARCODE_READ_OBSERVED",
+                    "Código decodificado — observação técnica",
+                    (
+                        f"Conteúdo efetivamente lido: {content[:1000]}. "
+                        "Esta leitura não comprova pagamento, valor ou autenticidade. "
+                        f"{condition}"
+                    ),
+                    "Informativo",
+                    "BarcodeReader (resultado armazenado)",
+                    None,
+                    "Leitura técnica, NÃO é novo indício de fraude",
+                    format_name,
+                    self._safe_financial_excel_text(content),
+                    len(content),
+                    page if type(page) is int else None,
+                    condition,
+                ])
+                barcode_observations += 1
+
+        identifier_observations = 0
+        for item in self._current_identifier_observations:
+            if not isinstance(item, dict):
+                continue
+            value = self._safe_financial_excel_text(item.get("value"))
+            page = item.get("page_number")
+            source = self._safe_financial_excel_text(item.get("source"))
+            worksheet.append([
+                self._safe_financial_excel_text(item.get("filename")),
+                self._safe_financial_excel_text(item.get("analysis_id")),
+                "DOCUMENT_IDENTIFIER_OBSERVED",
+                self._safe_financial_excel_text(item.get("label")),
+                f"{item.get('label')}: {value}. Fonte: {source}. "
+                "Leitura observacional, ainda sujeita à confirmação. "
+                + (str(item.get("review_reason")) + " Leituras alternativas: "
+                   + ", ".join(str(r.get("value")) for r in item.get("alternative_readings", []))
+                   if item.get("reading_conflict") else ""),
+                "Informativo", "DocumentIdentifierService",
+                item.get("confidence"),
+                "Campo documental identificado (observacional, não comprova fraude)",
+                None, value,
+                len(value), page if type(page) is int else None,
+                "Campo identificado por rótulo; verificar OCR e documento",
+            ])
+            identifier_observations += 1
+
+        if exported_evidences == 0 and barcode_observations == 0 and identifier_observations == 0:
+            worksheet.append([
+                "Nenhuma evidência ou leitura de código foi registrada."
+            ] + [None] * (len(headers) - 1))
 
         self._style_worksheet(
-            worksheet=worksheet,
-            freeze_panes="A2",
-            auto_filter=False,
+            worksheet=worksheet, freeze_panes="C2", auto_filter=False,
         )
-
-        column_widths = {
-            "A": 38,
-            "B": 38,
-            "C": 30,
-            "D": 42,
-            "E": 70,
-            "F": 18,
-            "G": 44,
-            "H": 16,
-        }
-
-        for column, width in column_widths.items():
-            worksheet.column_dimensions[
-                column
-            ].width = width
-
+        self._set_column_widths(
+            worksheet,
+            [38, 38, 32, 44, 78, 18, 40, 16, 45, 22, 74, 16, 12, 68],
+        )
         self._add_excel_table(
-            worksheet=worksheet,
-            table_name="DocDNA_Evidencias",
+            worksheet=worksheet, table_name="DocDNA_Evidencias",
         )
-
         return exported_evidences
 
     def _build_financial_sheet(
         self,
         worksheet,
         export_view: dict[str, Any],
+        batch: Batch | None = None,
+        reconciliation_records: list[dict[str, Any]] | None = None,
     ) -> int:
+        """Visão financeira única: validações + códigos lidos + reconciliação.
+
+        Não reabre PDFs, não refaz cálculos e não confunde uma leitura
+        de barras com um pagamento validado.
+        """
         headers = [
-            "Documento",
-            "ID da análise",
-            "Tipo de registro",
-            "Índice da linha",
-            "Índice do barcode",
-            "Linha digitável",
-            "Tipo da linha",
-            "Status",
-            "Método de validação",
-            "DVs válidos",
-            "Total de DVs",
-            "Barcode calculado",
-            "Barcode detectado",
-            "Mensagem",
+            "Documento", "ID da análise", "Tipo de registro",
+            "Índice da linha", "Índice do barcode", "Linha digitável",
+            "Tipo da linha", "Status", "Método de validação",
+            "DVs válidos", "Total de DVs", "Barcode calculado",
+            "Barcode detectado", "Mensagem",
+            "Simbologia da leitura", "Conteúdo bruto do código",
+            "Comprimento do conteúdo", "Página do código",
+            "Condição técnica da leitura", "Fonte do valor",
+            "Valor em BRL (observado)", "Proveniência técnica",
+            "SHA-256 do conteúdo", "Limitações / observações",
+            "Posição X (PDF)", "Posição Y (PDF)",
+            "Largura (PDF)", "Altura (PDF)",
         ]
-
         worksheet.append(headers)
-
-        records = export_view.get(
-            "financial",
-            [],
-        )
-
-        if not records:
-            worksheet.append(
-                [
-                    "Nenhum apontamento financeiro foi identificado.",
-                ]
-                + [None] * (len(headers) - 1)
-            )
+        records = export_view.get("financial", []) or []
 
         for record in records:
-            worksheet.append(
-                [
-                    record.get("filename"),
-                    record.get("analysis_id"),
-                    record.get("record_type_label"),
-                    record.get("line_index"),
-                    record.get("barcode_index"),
-                    record.get("numeric_line"),
-                    record.get("line_type_label"),
-                    record.get("status_label"),
-                    record.get("validation_method_label"),
-                    record.get("valid_check_digits"),
-                    record.get("total_check_digits"),
-                    record.get("converted_barcode"),
-                    record.get("detected_barcode"),
-                    record.get("message"),
-                ]
+            worksheet.append([
+                record.get("filename"),
+                record.get("analysis_id"),
+                record.get("record_type_label"),
+                record.get("line_index"),
+                record.get("barcode_index"),
+                record.get("numeric_line"),
+                record.get("line_type_label"),
+                record.get("status_label"),
+                record.get("validation_method_label"),
+                record.get("valid_check_digits"),
+                record.get("total_check_digits"),
+                record.get("converted_barcode"),
+                record.get("detected_barcode"),
+                record.get("message"),
+            ] + [None] * (len(headers) - 14))
+
+        # Cada código decodificado é visível mesmo quando não existe
+        # linha de arrecadação de 44 dígitos nem reconciliação financeira.
+        if batch is not None:
+            for document in batch.documents:
+                analysis = self._get_analysis(document.analysis_id)
+                if not isinstance(analysis, dict):
+                    continue
+                for ordinal, barcode in enumerate(
+                    analysis.get("barcodes", []) or [], start=1
+                ):
+                    content = str(self._safe_attribute(barcode, "content") or "")
+                    if not content:
+                        continue
+                    fmt = str(self._safe_attribute(barcode, "format") or "Não informado")
+                    barcode_index = self._safe_attribute(barcode, "barcode_index")
+                    page_number = self._safe_attribute(barcode, "page_number")
+                    condition = self._barcode_reading_condition(fmt, content)
+                    box = self._safe_attribute(
+                        self._safe_attribute(barcode, "location"), "bounding_box"
+                    )
+                    row = [None] * len(headers)
+                    row[0] = document.original_filename
+                    row[1] = self._optional_uuid(document.analysis_id)
+                    row[2] = "Código decodificado (observação)"
+                    row[4] = barcode_index if type(barcode_index) is int else ordinal
+                    row[7] = "Informativo — leitura técnica"
+                    row[12] = self._safe_financial_excel_text(content)
+                    row[13] = condition
+                    row[14] = fmt
+                    row[15] = self._safe_financial_excel_text(content)
+                    row[16] = len(content)
+                    row[17] = page_number if type(page_number) is int else None
+                    row[18] = condition
+                    row[22] = sha256(content.encode("utf-8")).hexdigest()
+                    row[23] = (
+                        "Leitura isolada não comprova valor, pagamento, "
+                        "titularidade nem autenticidade."
+                    )
+                    for position, field in enumerate(
+                        ("x", "y", "width", "height"), start=24
+                    ):
+                        value = self._safe_attribute(box, field)
+                        if isinstance(value, (int, float)) and not isinstance(value, bool):
+                            row[position] = value
+                    worksheet.append(row)
+
+        status_labels = {
+            "REVIEW_REQUIRED": "Conferir diferença observada (vínculo pendente)",
+            "CONSISTENT": "Valores codificados iguais (não atesta autenticidade)",
+            "INCONCLUSIVE": "Inconclusivo",
+            "UNKNOWN": "Status não reconhecido",
+        }
+        for entry in reconciliation_records or []:
+            filename = self._safe_financial_excel_text(entry.get("filename"))
+            analysis_id = self._safe_financial_excel_text(entry.get("analysis_id"))
+            status = entry.get("status", "UNKNOWN")
+            issues = " | ".join(str(x) for x in entry.get("issues", []))
+            row = [None] * len(headers)
+            row[0] = filename
+            row[1] = analysis_id
+            row[2] = "Reconciliação — resumo"
+            row[7] = status_labels.get(status, status)
+            row[13] = self._safe_financial_excel_text(entry.get("message"))
+            row[23] = self._safe_financial_excel_text(issues)
+            worksheet.append(row)
+
+            for value in entry.get("values", []):
+                raw = str(value.get("raw_content") or "")
+                row = [None] * len(headers)
+                row[0] = filename
+                row[1] = analysis_id
+                row[2] = "Reconciliação — valor observado"
+                index = value.get("barcode_index")
+                row[4] = index if type(index) is int else None
+                row[7] = "Valor observado (vínculo conforme resumo)"
+                row[15] = self._safe_financial_excel_text(raw, maximum_length=2000)
+                row[16] = len(raw) if raw else None
+                page = value.get("page_number")
+                row[17] = page if type(page) is int else None
+                row[19] = self._safe_financial_excel_text(value.get("source"), maximum_length=60)
+                row[20] = self._safe_financial_excel_text(value.get("amount"), maximum_length=60)
+                row[21] = self._safe_financial_excel_text(value.get("provenance"), maximum_length=120)
+                row[22] = sha256(raw.encode("utf-8")).hexdigest() if raw else None
+                worksheet.append(row)
+
+        if worksheet.max_row == 1:
+            worksheet.append([
+                "Nenhum registro financeiro nem código decodificado foi armazenado."
+            ] + [None] * (len(headers) - 1))
+
+        self._style_worksheet(
+            worksheet=worksheet, freeze_panes="C2", auto_filter=False,
+        )
+        self._set_column_widths(worksheet, [
+            38, 38, 34, 16, 18, 64, 28, 44, 26, 14, 14,
+            60, 70, 76, 23, 74, 19, 16, 70, 22, 22,
+            44, 65, 68, 20, 20, 22, 22,
+        ])
+        self._add_excel_table(
+            worksheet=worksheet, table_name="DocDNA_Financeiro",
+        )
+        return len(records)
+
+    @staticmethod
+    def _barcode_reading_condition(format_name: str, content: str) -> str:
+        """Comunica limites de uma leitura; não reclassifica achados."""
+        normalized = re.sub(r"[^a-z0-9]", "", str(format_name).lower())
+        if "itf" in normalized or "interleaved" in normalized:
+            if len(content) == 44 and content.isascii() and content.isdigit():
+                return (
+                    "ITF de 44 dígitos: comprimento compatível com código "
+                    "de arrecadação; estrutura e vínculo ainda requerem validação."
+                )
+            return (
+                f"ITF de {len(content)} caracteres: não é um código "
+                "de arrecadação completo de 44 dígitos."
             )
+        if "qr" in normalized:
+            return (
+                "QR Code decodificado; não se presume validade de "
+                "cobrança Pix nem correspondência com ITF."
+            )
+        return (
+            "Código decodificado; simbologia/conteúdo não confirmam "
+            "instrumento de pagamento."
+        )
+
+    def _build_financial_reconciliation_records(
+        self,
+        batch: Batch,
+    ) -> list[dict[str, Any]]:
+        """Consulta resultados armazenados; nunca reexecuta reconciliação.
+
+        Um lote anterior à feature pode não ter a chave de reconciliação.
+        Nesses casos não inventamos um INCONCLUSIVE ou um valor monetário.
+        """
+        records: list[dict[str, Any]] = []
+        for document in batch.documents:
+            if document.analysis_id is None:
+                continue
+            analysis = self._get_analysis(document.analysis_id)
+            if not isinstance(analysis, dict):
+                continue
+            reconciliation = analysis.get("financial_reconciliation")
+            if not isinstance(reconciliation, dict):
+                continue
+
+            raw_status = str(reconciliation.get("status") or "").upper()
+            status = (
+                raw_status if raw_status in {
+                    "REVIEW_REQUIRED", "CONSISTENT", "INCONCLUSIVE"
+                } else "UNKNOWN"
+            )
+            raw_values = reconciliation.get("values")
+            values = (
+                [value for value in raw_values if isinstance(value, dict)]
+                if isinstance(raw_values, list) else []
+            )
+            raw_issues = reconciliation.get("issues")
+            issues = (
+                list(raw_issues) if isinstance(raw_issues, list) else []
+            )
+            records.append({
+                "filename": str(document.original_filename or ""),
+                "analysis_id": str(document.analysis_id),
+                "status": status,
+                "message": str(reconciliation.get("message") or ""),
+                "issues": issues,
+                "values": values,
+            })
+        return records
+
+    @staticmethod
+    def _safe_financial_excel_text(
+        value: Any,
+        *,
+        maximum_length: int = 2000,
+    ) -> str:
+        """Evita fórmulas injetadas e textos que excedam limites do XLSX.
+
+        Aplica-se só aos novos campos; os dados originais permanecem intactos
+        no repositório e o SHA-256 da evidência é calculado sem truncamento.
+        """
+        normalized = str(value if value is not None else "")
+        normalized = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F]", "", normalized)
+        normalized = normalized[:maximum_length]
+        if normalized.lstrip().startswith(("=", "+", "-", "@")):
+            normalized = "'" + normalized
+        return normalized
+
+    def _build_financial_reconciliation_sheet(
+        self,
+        *,
+        worksheet,
+        records: list[dict[str, Any]],
+    ) -> int:
+        """Exibe cada observação e o diagnóstico *observacional* da análise.
+
+        REVIEW_REQUIRED não significa fraude, divergência comprovada da
+        mesma cobrança ou mudança automática na situação individual.
+        """
+        headers = [
+            "Documento", "ID da análise", "Tipo de registro",
+            "Status consolidado (não é fraude)", "Fonte", "Valor em BRL",
+            "Página", "Índice do código", "Proveniência técnica",
+            "Trecho do conteúdo original", "SHA-256 do conteúdo original",
+            "Mensagem técnica", "Limitações da interpretação",
+        ]
+        worksheet.append(headers)
+        written = 0
+        status_labels = {
+            "REVIEW_REQUIRED": "Conferir diferença observada (vínculo pendente)",
+            "CONSISTENT": "Valores codificados iguais (não atesta autenticidade)",
+            "INCONCLUSIVE": "Inconclusivo",
+            "UNKNOWN": "Status não reconhecido",
+        }
+        for entry in records:
+            filename = self._safe_financial_excel_text(entry["filename"])
+            analysis_id = self._safe_financial_excel_text(entry["analysis_id"])
+            status = entry.get("status", "UNKNOWN")
+            issues = " | ".join(str(x) for x in entry.get("issues", []))
+            # Linha consolidada mesmo quando nenhum valor pôde ser interpretado.
+            worksheet.append([
+                filename, analysis_id, "Resumo", status_labels.get(status, status),
+                None, None, None, None, None, None, None,
+                self._safe_financial_excel_text(entry.get("message"), maximum_length=2000),
+                self._safe_financial_excel_text(issues, maximum_length=2000),
+            ])
+            written += 1
+            for value in entry.get("values", []):
+                raw = str(value.get("raw_content") or "")
+                # SHA refere-se ao conteúdo da observação, NÃO ao PDF inteiro.
+                content_hash = sha256(raw.encode("utf-8")).hexdigest() if raw else None
+                worksheet.append([
+                    filename, analysis_id, "Valor observado", None,
+                    self._safe_financial_excel_text(value.get("source"), maximum_length=60),
+                    self._safe_financial_excel_text(value.get("amount"), maximum_length=60),
+                    value.get("page_number") if type(value.get("page_number")) is int else None,
+                    value.get("barcode_index") if type(value.get("barcode_index")) is int else None,
+                    self._safe_financial_excel_text(value.get("provenance"), maximum_length=120),
+                    self._safe_financial_excel_text(raw, maximum_length=512),
+                    content_hash, None, None,
+                ])
+                written += 1
+
+        if not records:
+            worksheet.append([
+                "Reconciliação não disponível nas análises deste lote.",
+                None, "Sem dados", None,
+            ] + [None] * (len(headers) - 4))
 
         self._style_worksheet(
             worksheet=worksheet,
-            freeze_panes="A2",
+            freeze_panes="D2",
             auto_filter=False,
         )
-
         self._set_column_widths(
             worksheet,
-            [
-                38, 38, 24, 16, 18, 70, 28,
-                28, 24, 14, 14, 62, 62, 70,
-            ],
+            [38, 38, 22, 48, 18, 20, 12, 18, 42, 72, 65, 76, 76],
         )
-
         self._add_excel_table(
             worksheet=worksheet,
-            table_name="DocDNA_Financeiro",
+            table_name="DocDNA_ReconciliacaoFinanceira",
         )
-
-        return len(records)
+        return written
 
     def _build_prompt_injection_sheet(
         self,
@@ -1576,9 +2422,7 @@ class BatchExcelExportService:
                     record.get("top"),
                     record.get("width"),
                     record.get("height"),
-                    self._ratio_value(
-                        record.get("confidence")
-                    ),
+                    self._location_confidence_ratio(record),
                     record.get("font_name"),
                     record.get("font_size"),
                     record.get("font_color_hex"),
@@ -1924,6 +2768,7 @@ class BatchExcelExportService:
         worksheet,
         evidences: list[DocumentEvidence],
         total_documents: int,
+        identifier_comparisons: list[dict[str, Any]] | None = None,
     ) -> int:
         headers = [
             "Código do apontamento",
@@ -1936,13 +2781,14 @@ class BatchExcelExportService:
             "Documentos envolvidos",
             "Sequências numéricas por documento",
             "Componente responsável",
+            "Campo identificado", "Valor 1", "Valor 2 / relação", "Proveniência",
         ]
 
         worksheet.append(headers)
 
         exported_comparisons = 0
 
-        if not evidences:
+        if not evidences and not identifier_comparisons:
             if total_documents == 1:
                 message = (
                     "Comparação entre documentos não aplicável: "
@@ -2003,9 +2849,38 @@ class BatchExcelExportService:
                     ),
                     numeric_lines_by_document,
                     evidence.source,
+                    None, None, None, None,
                 ]
             )
 
+            exported_comparisons += 1
+
+        for item in identifier_comparisons or []:
+            if not isinstance(item, dict):
+                continue
+            participants = item.get("participants") or []
+            names = [str(p.get("filename") or "") for p in participants]
+            provenances = [
+                f"{p.get('filename')}: pág. {p.get('page_number') or '?'} "
+                f"({p.get('source') or '?'})"
+                for p in participants
+            ]
+            worksheet.append([
+                self._safe_financial_excel_text(item.get("code")),
+                self._safe_financial_excel_text(item.get("label")),
+                self._safe_financial_excel_text(item.get("description")),
+                self._safe_financial_excel_text(item.get("severity")),
+                None, None,
+                item.get("document_count"),
+                self._safe_financial_excel_text(" | ".join(names)),
+                None, "DocumentIdentifierService (observacional)",
+                self._safe_financial_excel_text(item.get("kind")),
+                self._safe_financial_excel_text(item.get("value")),
+                self._safe_financial_excel_text(
+                    item.get("other_value") or item.get("relation")
+                ),
+                self._safe_financial_excel_text(" | ".join(provenances)),
+            ])
             exported_comparisons += 1
 
         self._style_worksheet(
@@ -2025,6 +2900,7 @@ class BatchExcelExportService:
             "H": 54,
             "I": 80,
             "J": 52,
+            "K": 24, "L": 36, "M": 28, "N": 72,
         }
 
         for column, width in column_widths.items():
@@ -2119,9 +2995,16 @@ class BatchExcelExportService:
                     numeric_lines
                 ]
 
-            normalized_lines = self._join_values(
-                numeric_lines
-            )
+            roles = {x.get("value"): x.get("role")
+                     for x in document.get("numeric_line_contexts", [])}
+            role_labels = {
+                "payment_line_candidate": "candidata de pagamento; vínculo não confirmado",
+                "unresolved_numeric_sequence": "sequência inconclusiva",
+            }
+            normalized_lines = self._join_values([
+                str(value) + (f" [{role_labels[roles[value]]}]" if roles.get(value) in role_labels else "")
+                for value in numeric_lines
+            ])
 
             if not normalized_lines:
                 normalized_lines = (
@@ -2227,6 +3110,13 @@ class BatchExcelExportService:
                     "normalized_content",
                 )
                 or ""
+            ) + (
+                " [campos concatenados; observação preservada]"
+                if self._safe_attribute(line, "contextual_kind") == "concatenated_fields" else
+                " [candidata de pagamento; vínculo não confirmado]"
+                if self._safe_attribute(line, "contextual_kind") == "payment_line_candidate" else
+                " [sequência numérica inconclusiva]"
+                if self._safe_attribute(line, "contextual_kind") == "unresolved_numeric_sequence" else ""
             )
             for line in lines
         ]
@@ -2424,6 +3314,10 @@ class BatchExcelExportService:
             18,  # Status operacional
             24,  # Situação analítica
             18,  # Código analítico
+            28,  # Possui apontamentos comparativos
+            22,  # Quantidade de apontamentos comparativos
+            26,  # Maior severidade comparativa
+            23,  # Referência comparativa
             38,  # ID análise
             18,  # Tamanho
             68,  # SHA
@@ -2444,6 +3338,12 @@ class BatchExcelExportService:
             18,  # Evidências
             44,  # Localização
             46,  # Erro
+            28,  # Triagem técnica
+            65,  # Motivos
+            47,  # Códigos comparativos relevantes
+            22,  # Inválidas
+            22,  # Divergências
+            22,  # Registros inconclusivos
         ]
 
         for index, width in enumerate(
@@ -2631,6 +3531,20 @@ class BatchExcelExportService:
             return float(value)
         except (TypeError, ValueError):
             return None
+
+    def _location_confidence_ratio(self, record: dict[str, Any]) -> float | None:
+        value = record.get("confidence")
+        if record.get("location_type") != "numeric_line":
+            return self._ratio_value(value)
+        # NumericLineLocation preserva a média OCR original em 0–100.
+        # Mesmo 0.5 significa 0.5%, não 50%. Não adivinhar a escala pelo valor.
+        try:
+            percent = float(value)
+        except (TypeError, ValueError):
+            return None
+        if not isfinite(percent) or not 0 <= percent <= 100:
+            return None
+        return percent / 100
 
     def _ratio_value(
         self,

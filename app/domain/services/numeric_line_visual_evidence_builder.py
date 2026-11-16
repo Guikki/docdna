@@ -48,9 +48,13 @@ class NumericLineVisualEvidenceBuilder:
         boxes: list[OcrTextBox],
         output_dir: Path,
     ) -> NumericLineLocation:
-        raw_target = self._normalize_digits(
-            line.normalized_content
-        )
+        """Só atribui página/coordenadas quando a localização é inequívoca.
+
+        Uma mesma sequência pode aparecer no canhoto, no corpo da fatura,
+        em mais de uma página, ou como trecho de um candidato OCR maior.
+        Encontrar a primeira ocorrência não demonstra sua proveniência.
+        """
+        raw_target = self._normalize_digits(line.normalized_content)
 
         if not raw_target:
             return self._not_located(
@@ -61,111 +65,136 @@ class NumericLineVisualEvidenceBuilder:
                 ),
             )
 
-        candidate_targets = self._build_candidate_targets(
-            raw_target
-        )
-
+        candidate_targets = self._build_candidate_targets(raw_target)
         boxes_by_page = self._group_boxes_by_page(boxes)
 
-        for target in candidate_targets:
-            for page_number, page_boxes in boxes_by_page.items():
-                visual_lines = self._group_boxes_by_visual_line(
-                    page_boxes
-                )
+        # Agrupamento é independente do candidato (e evita reprocessá-lo
+        # para cada subsequência de 47/48 dígitos).
+        visual_lines_by_page = {
+            page_number: self._group_boxes_by_visual_line(page_boxes)
+            for page_number, page_boxes in boxes_by_page.items()
+        }
 
+        # Uma evidência física pode coincidir com o candidato inteiro e
+        # com uma subsequência dele. Essas buscas não são ocorrências
+        # distintas quando ocupam a mesma caixa delimitadora.
+        locations: dict[tuple, tuple] = {}
+
+        for target in candidate_targets:
+            # Duas ocorrências DO MESMO candidato em uma única caixa OCR
+            # não são desambiguadas por coordenadas: conservadoramente,
+            # a posição permanece desconhecida.
+            seen_for_target: set[tuple] = set()
+            for page_number, visual_lines in visual_lines_by_page.items():
                 for visual_line_boxes in visual_lines:
-                    match = self._find_match_in_visual_line(
+                    matches = self._find_all_matches_in_visual_line(
                         target=target,
                         visual_line_boxes=visual_line_boxes,
+                        max_matches=2,
                     )
-
-                    if match is None:
-                        continue
-
-                    matched_boxes, matched_content = match
-
-                    left = min(
-                        box.left
-                        for box in matched_boxes
-                    )
-                    top = min(
-                        box.top
-                        for box in matched_boxes
-                    )
-                    right = max(
-                        box.left + box.width
-                        for box in matched_boxes
-                    )
-                    bottom = max(
-                        box.top + box.height
-                        for box in matched_boxes
-                    )
-
-                    width = right - left
-                    height = bottom - top
-
-                    confidence = (
-                        sum(
-                            box.confidence
-                            for box in matched_boxes
+                    for matched_boxes, matched_content in matches:
+                        left = min(box.left for box in matched_boxes)
+                        top = min(box.top for box in matched_boxes)
+                        right = max(
+                            box.left + box.width for box in matched_boxes
                         )
-                        / len(matched_boxes)
-                    )
-
-                    (
-                        source_image_path,
-                        annotated_image_path,
-                    ) = self._render_annotated_page(
-                        pdf_path=pdf_path,
-                        page_number=page_number,
-                        line_index=line.line_index,
-                        left=left,
-                        top=top,
-                        width=width,
-                        height=height,
-                        output_dir=output_dir,
-                    )
-
-                    used_subsequence = target != raw_target
-
-                    message = (
-                        "A sequência numérica foi localizada visualmente "
-                        "na página do documento."
-                    )
-
-                    if used_subsequence:
-                        message = (
-                            "Foi localizado visualmente um trecho interno "
-                            "compatível com linha digitável dentro da "
-                            "sequência capturada pelo OCR."
+                        bottom = max(
+                            box.top + box.height for box in matched_boxes
+                        )
+                        location_key = (
+                            page_number, left, top, right, bottom,
                         )
 
-                    return NumericLineLocation(
-                        line_index=line.line_index,
-                        page_number=page_number,
-                        matched_content=matched_content,
-                        left=left,
-                        top=top,
-                        width=width,
-                        height=height,
-                        confidence=confidence,
-                        source_image_path=str(
-                            source_image_path
-                        ),
-                        annotated_image_path=str(
-                            annotated_image_path
-                        ),
-                        located=True,
-                        message=message,
-                    )
+                        if location_key in seen_for_target:
+                            return self._not_located(
+                                line_index=line.line_index,
+                                message=(
+                                    "Localização ambígua: a mesma sequência "
+                                    "aparece mais de uma vez na região "
+                                    "reconhecida pelo OCR."
+                                ),
+                            )
+                        seen_for_target.add(location_key)
 
-        return self._not_located(
+                        if location_key not in locations:
+                            locations[location_key] = (
+                                page_number,
+                                left,
+                                top,
+                                right - left,
+                                bottom - top,
+                                matched_boxes,
+                                matched_content,
+                                target != raw_target,
+                            )
+
+                        if len(locations) > 1:
+                            return self._not_located(
+                                line_index=line.line_index,
+                                message=(
+                                    "Localização ambígua: há correspondências "
+                                    "numéricas em mais de uma página ou região "
+                                    "do documento. Nenhuma posição foi "
+                                    "atribuída automaticamente."
+                                ),
+                            )
+
+        if not locations:
+            return self._not_located(
+                line_index=line.line_index,
+                message=(
+                    "Não foi possível confirmar visualmente a localização "
+                    "da sequência numérica nem de um trecho interno "
+                    "compatível com linha digitável."
+                ),
+            )
+
+        (
+            page_number,
+            left,
+            top,
+            width,
+            height,
+            matched_boxes,
+            matched_content,
+            used_subsequence,
+        ) = next(iter(locations.values()))
+
+        confidence = sum(
+            box.confidence for box in matched_boxes
+        ) / len(matched_boxes)
+
+        source_image_path, annotated_image_path = self._render_annotated_page(
+            pdf_path=pdf_path,
+            page_number=page_number,
             line_index=line.line_index,
-            message=(
-                "Não foi possível confirmar visualmente a localização "
-                "da sequência numérica nem de um trecho interno "
-                "compatível com linha digitável."
-            ),
+            left=left,
+            top=top,
+            width=width,
+            height=height,
+            output_dir=output_dir,
+        )
+
+        message = (
+            "Foi localizado visualmente um trecho interno compatível "
+            "com linha digitável dentro da sequência capturada pelo OCR."
+            if used_subsequence
+            else "A sequência numérica foi localizada visualmente na página do documento."
+        )
+
+        return NumericLineLocation(
+            line_index=line.line_index,
+            page_number=page_number,
+            matched_content=matched_content,
+            left=left,
+            top=top,
+            width=width,
+            height=height,
+            confidence=confidence,
+            source_image_path=str(source_image_path),
+            annotated_image_path=str(annotated_image_path),
+            located=True,
+            message=message,
         )
 
     def _build_candidate_targets(
@@ -203,7 +232,14 @@ class NumericLineVisualEvidenceBuilder:
                     )
 
         candidates.sort(
-            key=self._candidate_priority
+            # Localizar não é validar. Um candidato integral, mesmo com
+            # estrutura desconhecida, não deve perder dígitos para uma
+            # subsequência considerada mais plausível. Todas as ocorrências
+            # continuam sendo examinadas para detectar ambiguidade.
+            key=lambda candidate: (
+                candidate != raw_target,
+                self._candidate_priority(candidate),
+            )
         )
 
         return candidates
@@ -250,55 +286,65 @@ class NumericLineVisualEvidenceBuilder:
         target: str,
         visual_line_boxes: list[OcrTextBox],
     ) -> tuple[list[OcrTextBox], str] | None:
-        ordered_boxes = sorted(
-            visual_line_boxes,
-            key=lambda box: box.left,
-        )
+        """Interface legada: preserva o retorno da primeira correspondência.
 
+        A decisão sobre unicidade ocorre em _locate_line, que consome
+        _find_all_matches_in_visual_line em vez deste método.
+        """
+        matches = self._find_all_matches_in_visual_line(
+            target=target,
+            visual_line_boxes=visual_line_boxes,
+            max_matches=1,
+        )
+        return matches[0] if matches else None
+
+    def _find_all_matches_in_visual_line(
+        self,
+        target: str,
+        visual_line_boxes: list[OcrTextBox],
+        max_matches: int = 2,
+    ) -> list[tuple[list[OcrTextBox], str]]:
+        """Encontra ocorrências distintas sem reutilizar caixas OCR.
+
+        O limite de duas ocorrências basta para reconhecer ambiguidade
+        e evita percorrer milhares de coincidências em texto repetitivo.
+        """
+        if not target or max_matches < 1:
+            return []
+
+        ordered_boxes = sorted(visual_line_boxes, key=lambda box: box.left)
         numeric_boxes = [
-            box
+            (box, self._normalize_digits(box.text))
             for box in ordered_boxes
             if self._normalize_digits(box.text)
         ]
+        if not numeric_boxes:
+            return []
 
-        for start_index in range(len(numeric_boxes)):
-            collected_boxes: list[OcrTextBox] = []
-            collected_digits = ""
+        combined_digits = "".join(digits for _, digits in numeric_boxes)
+        offsets: list[tuple[int, int, OcrTextBox]] = []
+        position = 0
+        for box, digits in numeric_boxes:
+            end = position + len(digits)
+            offsets.append((position, end, box))
+            position = end
 
-            for current_index in range(
-                start_index,
-                len(numeric_boxes),
-            ):
-                box = numeric_boxes[current_index]
-                digits = self._normalize_digits(box.text)
-
-                if not digits:
-                    continue
-
-                collected_boxes.append(box)
-                collected_digits += digits
-
-                if collected_digits == target:
-                    return (
-                        collected_boxes,
-                        collected_digits,
-                    )
-
-                if target in collected_digits:
-                    return self._trim_match_to_target(
-                        target=target,
-                        collected_boxes=collected_boxes,
-                    )
-
-                if len(collected_digits) > len(target):
-                    break
-
-                if not target.startswith(
-                    collected_digits
-                ):
-                    break
-
-        return None
+        results: list[tuple[list[OcrTextBox], str]] = []
+        search_start = 0
+        while len(results) < max_matches:
+            target_start = combined_digits.find(target, search_start)
+            if target_start < 0:
+                break
+            target_end = target_start + len(target)
+            matched_boxes = [
+                box
+                for box_start, box_end, box in offsets
+                if box_end > target_start and box_start < target_end
+            ]
+            if matched_boxes:
+                results.append((matched_boxes, target))
+            search_start = target_start + 1
+        return results
 
     def _trim_match_to_target(
         self,

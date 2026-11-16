@@ -65,7 +65,7 @@ EVIDENCE_PRESENTATION_CATALOG: dict[str, dict[str, Any]] = {
     },
     "QRCODE_REGENERATED": {
         "category": "Fingerprint de QR Code",
-        "display_title": "QR Code possivelmente regenerado",
+        "display_title": "Mesmo conteúdo QR com imagens diferentes",
         "method_label": (
             "Comparação entre conteúdo e representação visual"
         ),

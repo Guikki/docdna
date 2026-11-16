@@ -1,4 +1,5 @@
 from io import BytesIO
+from dataclasses import replace
 from typing import Any
 
 import pymupdf
@@ -79,6 +80,34 @@ class OcrReader(BaseReader):
             document_ocr=document_ocr,
             text_boxes=text_boxes,
         )
+
+    def read_regions(self, source: str, regions: list[dict]) -> list[OcrTextBox]:
+        """OCR de recortes em 4x, devolvendo caixas na escala OCR original 2x."""
+        boxes = []
+        with pymupdf.open(source) as document:
+            for request in regions[:4]:
+                page_number = request["page_number"]
+                if type(page_number) is not int or not 1 <= page_number <= len(document):
+                    continue
+                page = document[page_number-1]
+                if page.rotation:
+                    # Mantém o OCR original; este recorte não presume uma
+                    # transformação geométrica segura para páginas rotacionadas.
+                    continue
+                clip = pymupdf.Rect(*(v / 2 for v in request["bounds_ocr_pixels"])) & page.rect
+                if clip.is_empty or clip.is_infinite:
+                    continue
+                pixmap = page.get_pixmap(matrix=pymupdf.Matrix(4, 4), clip=clip, alpha=False)
+                image = Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
+                data = pytesseract.image_to_data(
+                    image, lang=self.language, config="--psm 6", output_type=Output.DICT,
+                )
+                for box in self._build_text_boxes(data, page_number):
+                    boxes.append(replace(
+                        box, left=round((pixmap.x+box.left)/2), top=round((pixmap.y+box.top)/2),
+                        width=round(box.width/2), height=round(box.height/2),
+                    ))
+        return boxes
 
     def _render_page(
         self,

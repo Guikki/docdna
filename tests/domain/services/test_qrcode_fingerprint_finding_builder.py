@@ -170,8 +170,10 @@ def test_should_build_regenerated_qrcode_finding() -> None:
 
     assert finding.code == "QRCODE_REGENERATED"
     assert finding.title == (
-        "QR Code possivelmente regenerado"
+        "Mesmo conteúdo QR com imagens diferentes"
     )
+    assert "causa não foi determinada" in finding.description
+    assert "não comprova regeneração intencional" in finding.description
     assert finding.severity is CrossValidationSeverity.LOW
     assert finding.confidence == 1.0
 

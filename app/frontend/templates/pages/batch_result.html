@@ -121,6 +121,29 @@
     </section>
 
 
+    <section class="card" aria-labelledby="comparative-priority-title">
+        {% set comparative_summary = batch.comparative_summary | default({}) %}
+        <h2 id="comparative-priority-title" class="section-title">Prioridade comparativa do lote</h2>
+        {% if comparative_summary.finding_count %}
+        <p>
+            {{ comparative_summary.finding_count }} apontamento(s) comparativo(s)
+            em {{ comparative_summary.affected_documents }} documento(s).
+            Maior severidade comparativa: <strong>{{ comparative_summary.highest_severity_label }}</strong>.
+        </p>
+        {% if comparative_summary.clear_with_comparative_findings %}
+        <p>
+            {{ comparative_summary.clear_with_comparative_findings }} documento(s)
+            sem achados individuais possuem apontamentos na comparação do lote.
+            Consulte as comparações antes de concluir a revisão.
+        </p>
+        {% endif %}
+        <a class="btn btn-secondary" href="/batches/{{ batch.id }}/comparisons">Examinar comparações</a>
+        {% else %}
+        <p>Nenhum apontamento comparativo disponível nesta análise.</p>
+        {% endif %}
+        <p>A prioridade comparativa é independente da classificação individual e não comprova fraude.</p>
+    </section>
+
     <section
         class="
             card

@@ -27,6 +27,9 @@ from app.domain.models.cross_validation_result import (
 from app.domain.models.evidence_report import (
     EvidenceReport,
 )
+from app.domain.services.document_identifier_service import (
+    DocumentIdentifierService,
+)
 from app.infrastructure.repositories.analysis_memory_repository import (
     AnalysisMemoryRepository,
 )
@@ -59,6 +62,9 @@ class BatchCrossValidationService:
             EvidenceReportBuilder()
         )
 
+        self._identifier_service = DocumentIdentifierService()
+        self._identifier_comparisons: list[dict[str, Any]] = []
+
         self._performance_report: (
             dict[str, Any]
             | None
@@ -69,6 +75,11 @@ class BatchCrossValidationService:
         self,
     ) -> dict[str, Any] | None:
         return self._performance_report
+
+    @property
+    def identifier_comparisons(self) -> list[dict[str, Any]]:
+        """Observações comparativas separadas dos findings formais existentes."""
+        return list(self._identifier_comparisons)
 
     def execute(
         self,
@@ -196,6 +207,7 @@ class BatchCrossValidationService:
         timer = PerformanceTimer()
 
         self._performance_report = None
+        self._identifier_comparisons = []
 
         with timer.measure(
             "load_batch_analyses"
@@ -237,6 +249,10 @@ class BatchCrossValidationService:
                     analyses=analyses
                 )
             )
+
+        # Não altera as métricas dos comparadores formais. Retorna em
+        # canal observacional separado, para futura inclusão na triagem.
+        self._identifier_comparisons = self._identifier_service.compare(analyses)
 
         metrics = execution.metrics
 
@@ -302,6 +318,7 @@ class BatchCrossValidationService:
             "image_candidate_selection": (
                 image_candidate_selection
             ),
+            "identifier_observational_comparisons": len(self._identifier_comparisons),
         }
 
     def _build_image_candidate_selection_report(

@@ -96,7 +96,7 @@ class _FakeQRCodeFingerprintProcessor:
 
 
 class _FakePrintedNumericLineReader:
-    def read(self, *, native_text, ocr):
+    def read(self, *, native_text, ocr, ocr_text_boxes=None, identifier_observations=None, normalized_document=None):
         return []
 
 

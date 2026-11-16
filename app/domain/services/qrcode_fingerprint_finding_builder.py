@@ -104,14 +104,16 @@ class QRCodeFingerprintFindingBuilder:
                 CrossValidationFinding(
                     code="QRCODE_REGENERATED",
                     title=(
-                        "QR Code possivelmente regenerado"
+                        "Mesmo conteúdo QR com imagens diferentes"
                     ),
                     description=(
                         "Os QR Codes possuem o mesmo conteúdo "
                         "decodificado, mas suas representações "
                         "visuais não são exatamente iguais. Isso "
-                        "pode indicar regeneração, redimensionamento "
-                        "ou reprocessamento da imagem."
+                        "pode decorrer de redimensionamento, renderização "
+                        "ou reprocessamento. A causa não foi determinada; "
+                        "a comparação não comprova regeneração intencional "
+                        "nem adulteração."
                     ),
                     severity=CrossValidationSeverity.LOW,
                     confidence=1.0,

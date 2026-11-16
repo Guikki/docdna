@@ -47,6 +47,16 @@ class DuplicateItfDifferentNumericLineComparator(
                     )
                 ),
                 "numeric_lines": numeric_lines,
+                "numeric_line_contexts": [{
+                    "value": self._read_value(line, "normalized_content"),
+                    "line_index": self._read_value(line, "line_index"),
+                    "role": ("observed_concatenated_identifiers"
+                             if self._read_value(line, "contextual_kind") == "concatenated_fields"
+                             else "payment_line_candidate"
+                             if self._read_value(line, "contextual_kind") == "payment_line_candidate"
+                             else "unresolved_numeric_sequence"),
+                    "provenance": self._read_value(line, "contextual_metadata") or {},
+                } for line in analysis.get("printed_numeric_lines", [])],
             }
 
             for itf in itfs:
@@ -107,10 +117,10 @@ class DuplicateItfDifferentNumericLineComparator(
                         "O mesmo conteúdo ITF foi identificado "
                         "em documentos diferentes do lote, mas "
                         "as sequências numéricas capturadas nesses "
-                        "documentos não são iguais. Esse padrão pode "
-                        "indicar reutilização do código de barras "
-                        "associada à alteração da representação "
-                        "numérica visível."
+                        "documentos não são iguais. Campos concatenados "
+                        "comprovados foram excluídos desta comparação. "
+                        "As demais sequências são candidatas; a diferença "
+                        "não demonstra adulteração nem vínculo com a mesma cobrança."
                     ),
                     severity=CrossValidationSeverity.HIGH,
                     confidence=1.0,
@@ -171,6 +181,8 @@ class DuplicateItfDifferentNumericLineComparator(
             "printed_numeric_lines",
             [],
         ):
+            if self._read_value(line, "contextual_kind") == "concatenated_fields":
+                continue
             content = self._normalize_digits(
                 self._read_value(
                     line,

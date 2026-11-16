@@ -6,6 +6,9 @@ from app.domain.models.batch import Batch
 from app.domain.models.batch_finding_summary import (
     BatchFindingSummary,
 )
+from app.domain.models.cross_validation_finding import (
+    CrossValidationFinding,
+)
 from app.frontend.investigations.models.investigation_status import (
     InvestigationStatus,
 )
@@ -54,9 +57,14 @@ class BatchExportViewBuilder:
             str,
             InvestigationStatus,
         ] | None = None,
-        analysis_views: list[
+            analysis_views: list[
             dict[str, Any]
         ] | None = None,
+        comparative_findings: list[
+            CrossValidationFinding
+            ] | None = None,
+        identifier_observations: list[dict[str, Any]] | None = None,
+        identifier_comparisons: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         normalized_analysis_views = (
             analysis_views or []
@@ -70,6 +78,9 @@ class BatchExportViewBuilder:
                 ),
                 document_analytical_statuses=(
                     document_analytical_statuses
+                ),
+                comparative_findings=(
+                    comparative_findings
                 ),
             )
         )
@@ -128,6 +139,16 @@ class BatchExportViewBuilder:
                     normalized_analysis_views
                 )
             ),
+            # Não computa esses registros nos findings/score individuais.
+            "identifier_observations": list(identifier_observations or []),
+            "identifier_comparisons": list(identifier_comparisons or []),
+            # Findings contextuais não são resultados INVALID do validador.
+            "contextual_payment_line_findings": [
+                {"analysis_id": str(analysis.get("id") or ""), **evidence}
+                for analysis in normalized_analysis_views
+                for evidence in analysis.get("evidences", [])
+                if evidence.get("code") == "PAYMENT_LINE_INVALID_STRUCTURE"
+            ],
         }
 
     def _build_summary(
@@ -314,6 +335,34 @@ class BatchExportViewBuilder:
                     document[
                         "analytical_status_label"
                     ]
+                ),
+
+                # Preserva os achados comparativos sem modificar
+                # a classificação analítica individual.
+                "has_comparative_findings": document.get(
+                    "has_comparative_findings",
+                    False,
+                ),
+
+                "comparative_finding_count": document.get(
+                    "comparative_finding_count",
+                    0,
+                ),
+
+                "comparative_finding_count_label": document.get(
+                    "comparative_finding_count_label"
+                ),
+
+                "comparative_highest_severity": document.get(
+                    "comparative_highest_severity"
+                ),
+
+                "comparative_highest_severity_label": document.get(
+                    "comparative_highest_severity_label"
+                ),
+
+                "comparative_url": document.get(
+                    "comparative_url"
                 ),
 
                 "analysis_url": (
@@ -1414,6 +1463,8 @@ class BatchExportViewBuilder:
             )
 
             for location in numeric_locations:
+                kind = next((v.get("contextual_kind") for v in analysis.get("numeric_line_validations", [])
+                             if v.get("line_index") == location.get("line_index")), None)
                 result.append(
                     self._build_location_row(
                         analysis_id=analysis_id,
@@ -1422,7 +1473,10 @@ class BatchExportViewBuilder:
                             "numeric_line"
                         ),
                         location_type_label=(
-                            "Linha digitável"
+                            "Observação numérica — campos concatenados"
+                            if kind == "concatenated_fields" else
+                            "Candidata de pagamento — vínculo não confirmado"
+                            if kind == "payment_line_candidate" else "Sequência numérica inconclusiva"
                         ),
                         reference_index=(
                             location.get(

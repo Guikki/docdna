@@ -13,6 +13,7 @@ def _analysis(
     prompt_injection_evidences=None,
     prompt_injection_score=0.0,
     white_text_findings=None,
+    low_contrast_text_findings=None,
     tiny_text_evidences=None,
 ):
     analysis_id = (
@@ -31,6 +32,7 @@ def _analysis(
         )
 
     concealment_analysis = SimpleNamespace(
+        low_contrast_text_findings=tuple(low_contrast_text_findings or []),
         white_text_findings=tuple(
             white_text_findings
             or []
@@ -93,6 +95,39 @@ def _summary_by_code(
         for summary in summaries
         if summary.code == code
     )
+
+
+def test_low_contrast_only_document_is_included_in_concealment_summary():
+    affected = _analysis(low_contrast_text_findings=[
+        _concealment_finding(confidence=0.92),
+        _concealment_finding(confidence=0.81),
+    ])
+    summaries = BatchFindingAggregationService().aggregate([affected, _analysis()])
+    assert len(summaries) == 1
+    summary = summaries[0]
+    assert summary.code == "VISUAL_CONCEALMENT"
+    assert summary.affected_documents == 1
+    assert summary.total_documents == 2
+    assert summary.occurrence_count == 2
+    assert summary.prevalence_percentage == 50.0
+    assert summary.highest_confidence == 0.92
+    assert summary.affected_document_ids == (str(affected["id"]),)
+
+
+def test_mixed_concealment_counts_occurrences_and_unique_documents():
+    mixed = _analysis(
+        white_text_findings=[_concealment_finding(confidence=0.8)],
+        low_contrast_text_findings=[_concealment_finding(confidence=0.95)],
+        tiny_text_evidences=[_concealment_finding(confidence=0.7)],
+    )
+    low_only = _analysis(low_contrast_text_findings=[_concealment_finding()])
+    summaries = BatchFindingAggregationService().aggregate([mixed, low_only, _analysis()])
+    summary = _summary_by_code(summaries, "VISUAL_CONCEALMENT")
+    assert summary.affected_documents == 2
+    assert summary.occurrence_count == 4
+    assert summary.prevalence_percentage == 66.67
+    assert summary.highest_confidence == 0.95
+    assert set(summary.affected_document_ids) == {str(mixed["id"]), str(low_only["id"])}
 
 
 def test_returns_empty_list_when_there_are_no_analyses():

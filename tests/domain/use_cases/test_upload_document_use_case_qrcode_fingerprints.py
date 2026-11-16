@@ -48,6 +48,8 @@ class _FakePromptInjectionAnalysisService:
         native_text,
         ocr,
         normalized_document,
+        barcodes,
+        qr_structural_findings,
     ):
         return None
 

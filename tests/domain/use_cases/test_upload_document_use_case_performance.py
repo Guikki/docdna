@@ -59,6 +59,8 @@ class _FakePromptInjectionAnalysisService:
         native_text,
         ocr,
         normalized_document,
+        barcodes,
+        qr_structural_findings,
     ):
         return None
 
@@ -183,6 +185,9 @@ def test_execute_should_expose_performance_report(
         "barcode_presence_detector",
         "barcode_numeric_line_compare",
         "barcode_numeric_line_evidence",
+        "financial_reconciliation",
+        "qr_structural_inspection",
+        "qr_visual_concealment_correlation",
         "prompt_injection_analysis",
         "prompt_injection_visual_evidence",
         "ocr",

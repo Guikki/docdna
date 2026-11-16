@@ -22,6 +22,7 @@ from app.frontend.investigations.models.investigation_status import (
 from app.frontend.view_models.batch_view_builder import (
     BatchViewBuilder,
 )
+from app.frontend.exports.batch_export_view_builder import BatchExportViewBuilder
 
 
 def _document(
@@ -78,6 +79,19 @@ def _finding(
     )
 
 
+def test_export_preserves_contextual_findings_separately_from_strict_validations():
+    document = _document(filename="contextual.pdf")
+    aid = str(document.analysis_id)
+    finding = {"code": "PAYMENT_LINE_INVALID_STRUCTURE", "description": "Contexto localizado"}
+    view = BatchExportViewBuilder().build(
+        batch=_batch([document]),
+        document_analytical_statuses={aid: InvestigationStatus.ATTENTION},
+        analysis_views=[{"id": aid, "evidences": [finding, {"code": "OTHER"}]}],
+    )
+    assert view["contextual_payment_line_findings"] == [{"analysis_id": aid, **finding}]
+    assert view["financial"] == []
+
+
 def test_clear_document_should_keep_individual_status_and_receive_comparative_context():
     document = _document(
         filename="document.pdf"
@@ -128,6 +142,13 @@ def test_clear_document_should_keep_individual_status_and_receive_comparative_co
         ]
         == "clear"
     )
+    assert view["analytical_status"] == "clear"
+    assert view["comparative_summary"] == {
+        "finding_count": 2,
+        "affected_documents": 1,
+        "clear_with_comparative_findings": 1,
+        "highest_severity_label": "Baixo",
+    }
 
     assert (
         exported_document[
@@ -195,6 +216,9 @@ def test_document_without_comparative_findings_should_not_receive_comparative_ba
     exported_document = (
         view["documents"][0]
     )
+    assert view["comparative_summary"]["finding_count"] == 0
+    assert view["comparative_summary"]["clear_with_comparative_findings"] == 0
+    assert view["comparative_summary"]["highest_severity_label"] is None
 
     assert (
         exported_document[

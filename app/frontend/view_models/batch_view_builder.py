@@ -107,6 +107,20 @@ class BatchViewBuilder:
             "analytical_summary": (
                 analytical_summary
             ),
+            "comparative_summary": {
+                "finding_count": len(normalized_comparative_findings),
+                "affected_documents": sum(d["has_comparative_findings"] for d in documents),
+                "clear_with_comparative_findings": sum(
+                    d["analytical_status"] == InvestigationStatus.CLEAR.value
+                    and d["has_comparative_findings"] for d in documents
+                ),
+                "highest_severity_label": (
+                    self._translate_comparative_severity(min(
+                        (f.severity for f in normalized_comparative_findings),
+                        key=self._comparative_severity_priority,
+                    )) if normalized_comparative_findings else None
+                ),
+            },
 
             "created_at": (
                 self._format_datetime(

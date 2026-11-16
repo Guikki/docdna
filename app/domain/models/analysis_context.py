@@ -56,3 +56,4 @@ class AnalysisContext:
     qrcode_fingerprints: list[QRCodeFingerprint] = field(
         default_factory=list,
     )
+    document_identifiers: list[dict] = field(default_factory=list)

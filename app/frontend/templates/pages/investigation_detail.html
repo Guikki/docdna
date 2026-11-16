@@ -1462,6 +1462,16 @@
                             <p class="investigation-validation__number">
                                 {{ validation.normalized_content }}
                             </p>
+                              {% if validation.contextual_kind == "concatenated_fields" %}
+                              <p>Campos concatenados — observação preservada, sem uso como linha de pagamento.</p>
+                              <p>{{ validation.contextual_metadata.reason }}</p>
+                              {% elif validation.contextual_kind == "payment_line_candidate" %}
+                              <p>Candidata de pagamento — vínculo não confirmado.</p>
+                              <p>{{ validation.contextual_metadata.reason }}</p>
+                              {% elif validation.contextual_kind == "unresolved_numeric_sequence" %}
+                              <p>Sequência numérica inconclusiva.</p>
+                              <p>{{ validation.contextual_metadata.reason }}</p>
+                              {% endif %}
 
                             <dl
                                 class="

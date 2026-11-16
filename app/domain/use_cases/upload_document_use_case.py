@@ -1,4 +1,5 @@
 from datetime import datetime
+from dataclasses import replace
 from uuid import uuid4
 
 from fastapi import UploadFile
@@ -7,6 +8,9 @@ from app.config.settings import settings
 from app.domain.builders.analysis_context_builder import (
     AnalysisContextBuilder,
 )
+from app.domain.concealment.services.qr_visual_concealment_correlator import (
+    QrVisualConcealmentCorrelator,
+)
 from app.domain.detectors.barcode_numeric_line_detector import (
     BarcodeNumericLineDetector,
 )
@@ -14,6 +18,19 @@ from app.domain.detectors.barcode_presence_detector import (
     BarcodePresenceDetector,
 )
 from app.domain.models.document import Document
+from app.domain.models.analysis_context import AnalysisContext
+from app.domain.services.financial_reconciliation_service import (
+    FinancialReconciliationService,
+)
+from app.domain.services.document_identifier_service import (
+    DocumentIdentifierService,
+)
+from app.domain.services.encoded_content_inspector import (
+    EncodedContentInspector,
+)
+from app.domain.services.qr_structural_inspector import (
+    QrStructuralInspector,
+)
 from app.domain.prompt_injection.services.prompt_injection_analysis_service import (
     PromptInjectionAnalysisService,
 )
@@ -151,6 +168,11 @@ class UploadDocumentUseCase:
         with timer.measure(
             "barcode_numeric_line_compare"
         ):
+            if isinstance(analysis_context, AnalysisContext):
+                analysis_context = replace(
+                    analysis_context,
+                    printed_numeric_lines=barcode_numeric_line_detector.classify_candidates(analysis_context),
+                )
             barcode_line_comparisons = (
                 barcode_numeric_line_detector
                 .compare(
@@ -167,6 +189,63 @@ class UploadDocumentUseCase:
                     analysis_context
                 )
             )
+
+        # CF-QA 002.2: reconciliação observacional e conservadora.
+        # Não altera a política de risco nem cria Evidence automaticamente.
+        # O resultado é preservado na análise individual para futura triagem.
+        with timer.measure(
+            "financial_reconciliation"
+        ):
+            financial_reconciliation = (
+                FinancialReconciliationService()
+                .reconcile(
+                    barcodes=analysis_context.barcodes,
+                    native_text=analysis_context.native_text,
+                    ocr=analysis_context.ocr,
+                    ocr_text_boxes=analysis_context.ocr_text_boxes,
+                )
+            )
+
+        # CF-QA 003.6: somente observações etiquetadas nos textos já lidos.
+        # Não modifica o score individual e não executa OCR adicional.
+        document_identifiers = getattr(analysis_context, "document_identifiers", None)
+        if document_identifiers is None:
+            document_identifiers = DocumentIdentifierService().extract(
+                ocr_text_boxes=getattr(analysis_context, "ocr_text_boxes", ()) or (),
+                native_text=analysis_context.native_text,
+                ocr=analysis_context.ocr,
+            )
+
+        # CF-QA 003.9.2: custo controlado em lotes grandes. Apenas PDFs
+        # cujo texto nativo normalizado contenha fonte QR ou bits candidatos
+        # passam pela inspeção estrutural adicional.
+        with timer.measure("qr_structural_inspection"):
+            if self._has_qr_structural_candidates(
+                analysis_context.normalized_document
+            ):
+                qr_structural_findings = QrStructuralInspector().inspect_pdf(
+                    str(saved_path),
+                    barcodes=analysis_context.barcodes,
+                )
+            else:
+                qr_structural_findings = []
+
+        # CF-QA 003.9.5: corrige apenas evidencias tipograficas de spans
+        # inequivocamente vinculados a um QR cujo payload foi confirmado.
+        # Mantem texto branco, baixo contraste e demais achados intactos.
+        # Nao reabre o PDF, nao recalcula QR e nao modifica AnalysisContext.
+        with timer.measure("qr_visual_concealment_correlation"):
+            visual_concealment_analysis = (
+                analysis_context.visual_concealment_analysis
+            )
+            if qr_structural_findings:
+                visual_concealment_analysis = (
+                    QrVisualConcealmentCorrelator().correlate(
+                        analysis=visual_concealment_analysis,
+                        normalized_document=analysis_context.normalized_document,
+                        qr_structural_findings=qr_structural_findings,
+                    )
+                )
 
         with timer.measure(
             "prompt_injection_analysis"
@@ -186,6 +265,8 @@ class UploadDocumentUseCase:
                         analysis_context
                         .normalized_document
                     ),
+                    barcodes=analysis_context.barcodes,
+                    qr_structural_findings=qr_structural_findings,
                 )
             )
 
@@ -300,8 +381,7 @@ class UploadDocumentUseCase:
             ),
 
             "visual_concealment_analysis": (
-                analysis_context
-                .visual_concealment_analysis
+                visual_concealment_analysis
             ),
 
             "visual_concealment_locations": (
@@ -332,6 +412,21 @@ class UploadDocumentUseCase:
                 barcode_line_comparisons
             ),
 
+            # Contrato de dados estável: valores monetários como strings.
+            # Evita perda de precisão ao serializar Decimal como float.
+            # Campos e proveniência persistidos para comparação futura no lote.
+            "document_identifiers": document_identifiers,
+
+            "financial_reconciliation": (
+                self._serialize_financial_reconciliation(
+                    financial_reconciliation
+                )
+            ),
+
+            # Não significa QR oculto ou equivalência de payload.
+            # Registros observacionais independentes do score analítico.
+            "qr_structural_findings": qr_structural_findings,
+
             "prompt_injection_assessment": (
                 prompt_injection_assessment
             ),
@@ -353,6 +448,65 @@ class UploadDocumentUseCase:
                 "identificado e lido "
                 "com sucesso."
             ),
+        }
+
+    @staticmethod
+    def _has_qr_structural_candidates(normalized_document) -> bool:
+        """Gate de custo: não relê PDF sem indício nativo de QR em glifos."""
+        pages = getattr(normalized_document, "pages", None) or ()
+        inspected = 0
+        for page in pages:
+            for span in getattr(page, "text_spans", None) or ():
+                inspected += 1
+                if inspected > 25000:
+                    return False
+                font = str(getattr(span, "font_name", None) or
+                           getattr(span, "font", "") or "")
+                content = str(getattr(span, "text", "") or "")
+                if EncodedContentInspector._is_qr_font(font):
+                    return True
+                if len(content) >= 32 and EncodedContentInspector._binary_bits(content):
+                    return True
+        return False
+
+    @staticmethod
+    def _serialize_financial_reconciliation(result) -> dict:
+        """Preserva evidências financeiras de forma serializável, sem floats.
+
+        O serviço calcula status observacional, não autenticidade ou fraude.
+        A apresentação futura deve respeitar essa distinção.
+        """
+        return {
+            "status": result.status.value,
+            "message": result.message,
+            "issues": list(result.issues),
+            "values": [
+                {
+                    "source": value.source,
+                    "amount": str(value.amount),
+                    "page_number": value.page_number,
+                    "barcode_index": value.barcode_index,
+                    "raw_content": value.raw_content,
+                    "provenance": value.provenance,
+                    "left": value.left,
+                    "top": value.top,
+                    "width": value.width,
+                    "height": value.height,
+                    "confidence": value.confidence,
+                }
+                for value in result.values
+            ],
+            "comparisons": [
+                {
+                    "page_number": comparison.page_number,
+                    "sources": list(comparison.sources),
+                    "amounts": [str(amount) for amount in comparison.amounts],
+                    "relation": comparison.relation,
+                    "linkage": comparison.linkage,
+                    "message": comparison.message,
+                }
+                for comparison in result.comparisons
+            ],
         }
 
     def _merge_performance_reports(

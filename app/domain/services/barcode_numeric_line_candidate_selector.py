@@ -290,6 +290,8 @@ class BarcodeNumericLineCandidateSelector:
                 != self.NORMALIZED_LINE_SUBTYPE
             ):
                 continue
+            if element.metadata.get("contextual_kind") == "concatenated_fields":
+                continue
 
             if (
                 not isinstance(

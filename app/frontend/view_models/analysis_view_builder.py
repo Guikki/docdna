@@ -128,8 +128,17 @@ class AnalysisViewBuilder:
             )
         )
 
+        numeric_observations_by_index = {line.line_index: line for line in printed_numeric_lines}
         formatted_numeric_line_validations = [
             {
+                "contextual_kind": getattr(
+                    numeric_observations_by_index.get(validation.line_index),
+                    "contextual_kind", "unclassified",
+                ),
+                "contextual_metadata": getattr(
+                    numeric_observations_by_index.get(validation.line_index),
+                    "contextual_metadata", {},
+                ),
                 "line_index": (
                     validation.line_index
                 ),
@@ -835,6 +844,10 @@ class AnalysisViewBuilder:
                 len(
                     printed_numeric_lines
                 )
+            ),
+            "concatenated_field_observation_count": sum(
+                getattr(line, "contextual_kind", None) == "concatenated_fields"
+                for line in printed_numeric_lines
             ),
 
             "printed_numeric_line_message": (
